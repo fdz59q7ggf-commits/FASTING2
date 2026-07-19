@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>斷食計時器</title>
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#0b1220" />
+<style>
+  :root {
+    --bg: #0b1220;
+    --card: #121a2b;
+    --card-border: #223049;
+    --text: #eef2f7;
+    --text-dim: #8b96a8;
+    --text-faint: #566178;
+
+    --teal: #2dd4bf;
+    --coral: #fb7185;
+    --amber: #f2b134;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --slate: #3a4459;
+    --danger: #ef4444;
+
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+
+    --nav-h: 62px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: #05070c;
+    color: var(--text);
+    font-family: var(--sans);
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+  body {
+    display: flex; align-items: center; justify-content: center;
+  }
+  #app {
+    width: 100%; max-width: 480px; margin: 0 auto;
+    height: 100dvh;
+    background: var(--bg);
+    display: flex; flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+  /* 桌機/較寬螢幕：呈現手機外框樣式，避免內容被拉伸到滿版 */
+  @media (min-width: 620px) {
+    #app {
+      height: min(100dvh, 860px);
+      max-height: 860px;
+      margin: 20px auto;
+      border-radius: 32px;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.55);
+    }
+  }
+
+  .view {
+    display: none;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    padding: 14px 16px calc(var(--nav-h) + 14px);
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .view.active { display: flex; }
+  /* 記錄畫面與統計畫面：整體不捲動，只有內部清單/圖表區塊可捲動 */
+  #input-view, #chart-view { overflow: hidden; }
+  .scroll-region { flex: 1; min-height: 0; overflow-y: auto; }
+
+  /* ---------- shared ---------- */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 10px;
+    flex-shrink: 0;
+  }
+  .page-title {
+    font-size: 15px; font-weight: 800; text-align: center;
+    margin: 2px 0 10px; letter-spacing: 0.02em; flex-shrink: 0;
+  }
+  .offline-badge {
+    display: none; text-align: center; font-size: 10px; color: var(--text-dim);
+    background: var(--card); border: 1px solid var(--card-border); border-radius: 999px;
+    padding: 3px 9px; width: fit-content; margin: 0 auto 8px; font-family: var(--mono);
+    flex-shrink: 0;
+  }
+  .offline-badge.show { display: block; }
+
+  /* ================= HOME VIEW（不超出螢幕）================= */
+  #home-view { justify-content: flex-start; }
+
+  .setup-row { display: flex; gap: 8px; min-width: 0; }
+  .field { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .field label { font-size: 10px; color: var(--text-dim); }
+  .field select, .field input {
+    font-family: var(--sans); font-size: 13px; padding: 7px 8px;
+    border-radius: 9px; border: 1px solid var(--card-border);
+    background: #0e1728; color: var(--text);
+  }
+  .field select:focus, .field input:focus { outline: 1px solid var(--teal); }
+
+  .ring-section { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
+  .ring-wrap { position: relative; width: 208px; height: 208px; margin: 6px 0; }
+  .ring-bg {
+    position: absolute; inset: 0; border-radius: 50%;
+    background: conic-gradient(var(--teal) calc(var(--pct, 0) * 1%), #1b2438 0);
+  }
+  .ring-inner {
+    position: absolute; inset: 13px; border-radius: 50%;
+    background: var(--card);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+  }
+  .pct-text { font-size: 11px; color: var(--text-dim); margin-bottom: 2px; font-family: var(--mono); }
+  .elapsed-text { font-size: 27px; font-weight: 700; font-family: var(--mono); }
+  .goal-text { font-size: 10px; color: var(--text-faint); margin-top: 4px; font-family: var(--mono); }
+  .badge {
+    position: absolute; width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 8px; font-weight: 800; color: #06101f;
+    transform: translate(-50%, -50%);
+    border: 2px solid var(--card);
+    font-family: var(--mono);
+  }
+  .badge.done { background: var(--teal); }
+  .badge.current { background: var(--coral); color: #2a0a10; box-shadow: 0 0 0 3px rgba(251,113,133,0.22); }
+  .badge.todo { background: var(--slate); color: var(--text-dim); }
+
+  .controls { display: flex; gap: 8px; margin-top: 4px; flex-shrink: 0; }
+  button { font-family: var(--sans); border: none; cursor: pointer; border-radius: 12px; font-weight: 700; font-size: 14px; }
+  .btn-primary { flex: 2; background: var(--teal); color: #04211c; padding: 11px; }
+  .btn-secondary { flex: 1; background: #182337; border: 1px solid var(--card-border); color: var(--text); padding: 11px; }
+  .btn-primary:active, .btn-secondary:active { opacity: 0.7; }
+
+  .startend { display: flex; justify-content: space-between; font-size: 11px; margin-top: 8px; color: var(--text-faint); font-family: var(--mono); flex-shrink: 0; }
+  .startend b { color: var(--text); font-weight: 700; }
+
+  .phase-mini {
+    display: flex; align-items: center; gap: 10px;
+    border-left: 3px solid var(--coral);
+    flex-shrink: 0;
+  }
+  .phase-mini .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--coral); flex-shrink: 0; }
+  .phase-mini-body { min-width: 0; }
+  .phase-mini-title { font-size: 13px; font-weight: 800; margin-bottom: 2px; }
+  .phase-mini-desc {
+    font-size: 11.5px; color: var(--text-dim); line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  /* ================= INPUT VIEW ================= */
+  .section-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+  .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--coral); animation: pulse-beat 1.1s ease-in-out infinite; }
+  @keyframes pulse-beat { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.5); opacity: 0.5; } }
+  @media (prefers-reduced-motion: reduce) { .pulse-dot { animation: none; } }
+
+  .bio-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; min-width: 0; }
+  .bio-form .field { min-width: 0; }
+  .bio-form input { min-width: 0; width: 100%; }
+  .bio-add-btn { grid-column: 1 / -1; background: var(--teal); color: #04211c; padding: 11px 14px; border-radius: 12px; font-weight: 700; font-size: 13px; }
+
+  .bio-list { display: flex; flex-direction: column; gap: 8px; }
+  .bio-item {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #0e1728; border: 1px solid var(--card-border); border-radius: 12px;
+    padding: 8px 10px; font-size: 13px;
+  }
+  .bio-item .bio-time { color: var(--text-faint); font-size: 10px; font-family: var(--mono); }
+  .bio-item .bio-vals { display: flex; gap: 8px; font-weight: 600; font-family: var(--mono); font-size: 11.5px; flex-wrap: wrap; }
+  .bio-item .bio-remove { background: transparent; color: var(--text-faint); font-size: 16px; padding: 2px 4px; border: none; }
+  .empty-hint { text-align: center; color: var(--text-faint); font-size: 13px; padding: 14px 0; }
+
+  /* ================= CHART VIEW ================= */
+  .chart-grid { display: flex; flex-direction: column; gap: 12px; }
+  .chart-card { background: #0e1728; border: 1px solid var(--card-border); border-radius: 14px; padding: 12px 14px; flex-shrink: 0; }
+  .chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+  .chart-label { font-size: 12px; color: var(--text-dim); font-weight: 700; }
+  .chart-latest { font-size: 15px; font-weight: 700; font-family: var(--mono); }
+  .chart-legend { display: flex; gap: 10px; font-size: 10px; color: var(--text-faint); margin-top: 4px; font-family: var(--mono); }
+  .legend-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+  .chart-empty { font-size: 12px; color: var(--text-faint); text-align: center; padding: 14px 0; }
+  svg.sparkline { width: 100%; height: 60px; display: block; }
+
+  .disclaimer { font-size: 10.5px; color: var(--text-faint); text-align: center; line-height: 1.7; margin-top: 12px; flex-shrink: 0; }
+
+  /* ================= BOTTOM NAV ================= */
+  .tab-bar {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    height: var(--nav-h);
+    background: rgba(18, 26, 43, 0.92);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--card-border);
+    display: flex;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .tab-btn {
+    flex: 1; background: transparent; border: none; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+    color: var(--text-faint); font-size: 10.5px; font-weight: 700; font-family: var(--sans);
+    padding: 6px 0 0;
+  }
+  .tab-btn .tab-icon { font-size: 19px; line-height: 1; }
+  .tab-btn.active { color: var(--teal); }
+  .tab-btn.active .tab-icon { filter: drop-shadow(0 0 6px rgba(45,212,191,0.5)); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== HOME VIEW ===================== -->
+  <div class="view active" id="home-view">
+    <div class="offline-badge" id="offlineBadge">OFFLINE · 持續計時中</div>
+
+    <div class="card">
+      <div class="setup-row">
+        <div class="field">
+          <label>斷食開始時間</label>
+          <input type="datetime-local" id="startInput" />
+        </div>
+        <div class="field">
+          <label>目標時數</label>
+          <select id="goalSelect">
+            <option value="16">16 小時</option>
+            <option value="18">18 小時</option>
+            <option value="20">20 小時</option>
+            <option value="24">24 小時（1天）</option>
+            <option value="36">36 小時（1.5天）</option>
+            <option value="48">48 小時（2天）</option>
+            <option value="72">72 小時（3天）</option>
+            <option value="96">96 小時（4天）</option>
+            <option value="120" selected>120 小時（5天）</option>
+            <option value="144">144 小時（6天）</option>
+            <option value="168">168 小時（7天）</option>
+            <option value="192">192 小時（8天）</option>
+            <option value="216">216 小時（9天）</option>
+            <option value="240">240 小時（10天）</option>
+            <option value="264">264 小時（11天）</option>
+            <option value="288">288 小時（12天）</option>
+            <option value="312">312 小時（13天）</option>
+            <option value="336">336 小時（14天）</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="ring-section">
+        <div class="ring-wrap" id="ringWrap">
+          <div class="ring-bg" id="ringBg"></div>
+          <div class="ring-inner">
+            <div class="pct-text" id="pctText">已過時間 0%</div>
+            <div class="elapsed-text" id="elapsedText">00:00:00</div>
+            <div class="goal-text" id="goalText">目標 120 小時</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="btn-primary" id="startBtn">開始斷食</button>
+        <button class="btn-secondary" id="endBtn">結束斷食</button>
+      </div>
+
+      <div class="startend">
+        <span>開始 <b id="startLabel">—</b></span>
+        <span>預計結束 <b id="endLabel">—</b></span>
+      </div>
+    </div>
+
+    <div class="card phase-mini">
+      <div class="dot"></div>
+      <div class="phase-mini-body">
+        <div class="phase-mini-title" id="phaseTitle">尚未開始</div>
+        <div class="phase-mini-desc" id="phaseDesc">設定時間後按「開始斷食」，即可看到目前身體階段。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===================== INPUT VIEW ===================== -->
+  <div class="view" id="input-view">
+    <div class="page-title">📋 記錄數據</div>
+    <div class="card">
+      <div class="section-title"><span class="pulse-dot"></span> 體重 / 心跳 / 血糖 / 血壓</div>
+      <div class="bio-form">
+        <div class="field">
+          <label>體重 (kg)</label>
+          <input type="number" step="0.1" id="weightInput" placeholder="65.5" />
+        </div>
+        <div class="field">
+          <label>心跳 (bpm)</label>
+          <input type="number" step="1" id="hrInput" placeholder="72" />
+        </div>
+        <div class="field">
+          <label>血糖 (mg/dL)</label>
+          <input type="number" step="1" id="glucoseInput" placeholder="95" />
+        </div>
+        <div class="field" style="display:flex; flex-direction:row; gap:6px; min-width:0;">
+          <div style="flex:1; min-width:0;">
+            <label style="display:block; font-size:10px; color:var(--text-dim); margin-bottom:4px;">收縮壓</label>
+            <input type="number" step="1" id="sysInput" placeholder="120" style="width:100%; min-width:0;" />
+          </div>
+          <div style="flex:1; min-width:0;">
+            <label style="display:block; font-size:10px; color:var(--text-dim); margin-bottom:4px;">舒張壓</label>
+            <input type="number" step="1" id="diaInput" placeholder="80" style="width:100%; min-width:0;" />
+          </div>
+        </div>
+        <button class="bio-add-btn" id="bioAddBtn">＋ 新增記錄</button>
+      </div>
+    </div>
+    <div class="card" style="flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden;">
+      <div class="section-title" style="flex-shrink:0;">歷史紀錄</div>
+      <div class="bio-list scroll-region" id="bioList"></div>
+    </div>
+  </div>
+
+  <!-- ===================== CHART VIEW ===================== -->
+  <div class="view" id="chart-view">
+    <div class="page-title" style="flex-shrink:0;">📈 趨勢統計</div>
+    <div class="chart-grid scroll-region" id="chartGrid"></div>
+    <div class="disclaimer" style="flex-shrink:0;">
+      各階段之身體變化說明僅供一般參考，並非醫療建議。超過 24–48 小時的長時間斷食建議在醫師或營養師監督下進行；若有糖尿病、低血糖、心血管疾病、服用藥物、懷孕或曾有飲食失調經驗，請先諮詢專業醫療人員。若斷食期間感到頭暈、心悸、極度不適，請立即停止並補充飲食。
+    </div>
+  </div>
+
+  <!-- ===================== TAB BAR ===================== -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-view="home-view">
+      <span class="tab-icon">⏱</span>首頁
+    </button>
+    <button class="tab-btn" data-view="input-view">
+      <span class="tab-icon">✏️</span>記錄
+    </button>
+    <button class="tab-btn" data-view="chart-view">
+      <span class="tab-icon">📈</span>統計
+    </button>
+  </div>
+
+</div>
+
+<script>
+/* ---------------- 頁籤切換 ---------------- */
+const tabBtns = document.querySelectorAll('.tab-btn');
+const views = document.querySelectorAll('.view');
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const target = btn.getAttribute('data-view');
+    views.forEach(v => v.classList.toggle('active', v.id === target));
+    tabBtns.forEach(b => b.classList.toggle('active', b === btn));
+    if (target === 'chart-view') renderCharts();
+    if (target === 'input-view') renderBioList();
+  });
+});
+
+/* ---------------- 階段資料 ---------------- */
+const PHASES = [
+  { hours: 0,   title: '消化期',          desc: '身體正在消化與吸收食物，血糖與胰島素處於較高水平，主要以葡萄糖作為能量來源。' },
+  { hours: 4,   title: '血糖趨於穩定',     desc: '血糖與胰島素濃度開始下降，身體逐漸動用肝臟中的肝醣儲備來維持能量。' },
+  { hours: 12,  title: '肝醣持續消耗',     desc: '肝醣儲備持續減少，身體開始增加脂肪分解，作為能量補充來源。' },
+  { hours: 16,  title: '燃脂逐漸啟動',     desc: '肝醣接近耗盡，身體逐漸轉換為以脂肪作為主要燃料來源，這也是常見 16:8 斷食法鎖定的階段。' },
+  { hours: 24,  title: '進入輕度酮症',     desc: '肝臟開始生成酮體作為替代能量來源，部分研究指出此階段細胞自噬（清除受損物質）作用開始上升。' },
+  { hours: 36,  title: '自噬作用提升',     desc: '細胞加強清除受損蛋白質與胞器的自噬作用，生長激素分泌可能上升，有助維持肌肉量。' },
+  { hours: 48,  title: '深度酮症',         desc: '血液中酮體濃度明顯上升，部分研究顯示胰島素敏感度可能因此改善。' },
+  { hours: 72,  title: '免疫細胞更新',     desc: '部分研究（如 Longo 等學者的斷食研究）顯示，長時間斷食可能促進免疫細胞的汰舊換新與再生。' },
+  { hours: 96,  title: '脂肪適應期',       desc: '身體持續以脂肪與酮體為主要能量來源，代謝逐漸適應長時間無進食的狀態。' },
+  { hours: 120, title: '長時間斷食階段',   desc: '已進入較長天數的斷食，建議密切留意身體狀況（如頭暈、心悸、體力明顯下降），並在醫療人員監督下進行。' },
+  { hours: 144, title: '超長斷食階段',     desc: '此階段已超出多數安全建議範圍，強烈建議僅在專業醫療監督下進行，並定期監測血壓、血糖與電解質。' },
+];
+const MILESTONES = [12, 24, 36, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 288, 312, 336];
+
+/* ---------------- 狀態管理 ---------------- */
+const STATE_KEY = 'fastTimerState_v1';
+const BIO_KEY = 'fastBiometrics_v2';
+
+let state = { running: false, startTime: null, goalHours: 120 };
+let bioRecords = [];
+
+function loadState() {
+  try { const raw = localStorage.getItem(STATE_KEY); if (raw) state = Object.assign(state, JSON.parse(raw)); } catch (e) {}
+  try {
+    const raw2 = localStorage.getItem(BIO_KEY);
+    if (raw2) { bioRecords = JSON.parse(raw2); }
+    else {
+      const old = localStorage.getItem('fastBiometrics_v1');
+      if (old) bioRecords = JSON.parse(old).map(r => ({ ...r, hr: r.hr || null }));
+    }
+  } catch (e) {}
+}
+function saveState() { try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch (e) {} }
+function saveBio() { try { localStorage.setItem(BIO_KEY, JSON.stringify(bioRecords)); } catch (e) {} }
+
+/* ---------------- DOM ---------------- */
+const startInput = document.getElementById('startInput');
+const goalSelect = document.getElementById('goalSelect');
+const ringWrap = document.getElementById('ringWrap');
+const ringBg = document.getElementById('ringBg');
+const pctText = document.getElementById('pctText');
+const elapsedText = document.getElementById('elapsedText');
+const goalText = document.getElementById('goalText');
+const startBtn = document.getElementById('startBtn');
+const endBtn = document.getElementById('endBtn');
+const startLabel = document.getElementById('startLabel');
+const endLabel = document.getElementById('endLabel');
+const phaseTitle = document.getElementById('phaseTitle');
+const phaseDesc = document.getElementById('phaseDesc');
+const offlineBadge = document.getElementById('offlineBadge');
+
+const weightInput = document.getElementById('weightInput');
+const hrInput = document.getElementById('hrInput');
+const glucoseInput = document.getElementById('glucoseInput');
+const sysInput = document.getElementById('sysInput');
+const diaInput = document.getElementById('diaInput');
+const bioAddBtn = document.getElementById('bioAddBtn');
+const bioList = document.getElementById('bioList');
+const chartGrid = document.getElementById('chartGrid');
+
+/* ---------------- 工具 ---------------- */
+function toLocalDatetimeInputValue(ms) {
+  const d = new Date(ms);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function fmtHMS(totalSeconds) {
+  totalSeconds = Math.max(0, Math.floor(totalSeconds));
+  const h = Math.floor(totalSeconds / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = totalSeconds % 60;
+  return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+function fmtDateShort(ms) {
+  const d = new Date(ms);
+  return (d.getMonth()+1) + '/' + d.getDate() + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+function getPhase(elapsedHours) {
+  let ph = PHASES[0];
+  for (const p of PHASES) { if (elapsedHours >= p.hours) ph = p; }
+  return ph;
+}
+function notify(text) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    try { new Notification('斷食計時器', { body: text }); } catch (e) {}
+  }
+}
+
+/* ---------------- 徽章渲染 ---------------- */
+function renderBadges(elapsedHours, goalHours) {
+  ringWrap.querySelectorAll('.badge').forEach(b => b.remove());
+  const maxScale = Math.max(goalHours, ...MILESTONES.filter(m => m <= goalHours * 1.4));
+  const relevant = MILESTONES.filter(m => m <= maxScale);
+  const radius = 104;
+  const center = 104;
+  relevant.forEach((m) => {
+    const angleDeg = (m / maxScale) * 360 - 90;
+    const rad = (angleDeg * Math.PI) / 180;
+    const x = center + radius * Math.cos(rad);
+    const y = center + radius * Math.sin(rad);
+    const badge = document.createElement('div');
+    let cls = 'todo';
+    if (elapsedHours >= m) cls = 'done';
+    const currentPhase = getPhase(elapsedHours);
+    if (currentPhase.hours === m) cls = 'current';
+    badge.className = 'badge ' + cls;
+    badge.style.left = x + 'px';
+    badge.style.top = y + 'px';
+    badge.textContent = m;
+    ringWrap.appendChild(badge);
+  });
+}
+
+/* ---------------- 主計時顯示 ---------------- */
+function updateDisplay() {
+  const goalHours = Number(goalSelect.value) || 24;
+  state.goalHours = goalHours;
+
+  if (!state.running || !state.startTime) {
+    pctText.textContent = '已過時間 0%';
+    elapsedText.textContent = '00:00:00';
+    goalText.textContent = '目標 ' + goalHours + ' 小時';
+    ringBg.style.setProperty('--pct', 0);
+    startLabel.textContent = '—';
+    endLabel.textContent = '—';
+    phaseTitle.textContent = '尚未開始';
+    phaseDesc.textContent = '設定時間後按「開始斷食」，即可看到目前身體階段。';
+    renderBadges(0, goalHours);
+    return;
+  }
+
+  const nowMs = Date.now();
+  const elapsedMs = nowMs - state.startTime;
+  const elapsedSec = elapsedMs / 1000;
+  const elapsedHours = elapsedSec / 3600;
+  const pct = Math.min(100, (elapsedHours / goalHours) * 100);
+
+  pctText.textContent = '已過時間 ' + pct.toFixed(0) + '%';
+  elapsedText.textContent = fmtHMS(elapsedSec);
+  goalText.textContent = '目標 ' + goalHours + ' 小時';
+  ringBg.style.setProperty('--pct', pct);
+
+  startLabel.textContent = fmtDateShort(state.startTime);
+  endLabel.textContent = fmtDateShort(state.startTime + goalHours * 3600 * 1000);
+
+  const phase = getPhase(elapsedHours);
+  phaseTitle.textContent = `${phase.title}（第 ${Math.floor(elapsedHours)} 小時）`;
+  phaseDesc.textContent = phase.desc;
+
+  renderBadges(elapsedHours, goalHours);
+  checkMilestoneNotify(elapsedHours);
+}
+
+let notifiedMilestones = {};
+function checkMilestoneNotify(elapsedHours) {
+  MILESTONES.forEach((m) => {
+    if (elapsedHours >= m && !notifiedMilestones[m]) {
+      notifiedMilestones[m] = true;
+      notify(`已達成 ${m} 小時！${getPhase(m).title}`);
+    }
+  });
+}
+
+function tick() { updateDisplay(); requestAnimationFrame(tick); }
+
+/* ---------------- 開始 / 結束 ---------------- */
+startBtn.addEventListener('click', () => {
+  if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+  const inputVal = startInput.value;
+  const startMs = inputVal ? new Date(inputVal).getTime() : Date.now();
+  state.running = true;
+  state.startTime = startMs;
+  state.goalHours = Number(goalSelect.value) || 24;
+  notifiedMilestones = {};
+  saveState();
+  updateDisplay();
+});
+
+endBtn.addEventListener('click', () => {
+  if (!state.running) return;
+  if (confirm('確定要結束這次斷食嗎？')) {
+    state.running = false;
+    state.startTime = null;
+    saveState();
+    updateDisplay();
+  }
+});
+
+goalSelect.addEventListener('change', () => {
+  state.goalHours = Number(goalSelect.value);
+  saveState();
+  updateDisplay();
+});
+
+/* ---------------- 生理數據記錄 ---------------- */
+function renderBioList() {
+  bioList.innerHTML = '';
+  if (bioRecords.length === 0) {
+    bioList.innerHTML = '<div class="empty-hint">尚無記錄，新增第一筆數據吧</div>';
+    return;
+  }
+  const sorted = [...bioRecords].sort((a, b) => b.time - a.time);
+  sorted.forEach((rec) => {
+    const item = document.createElement('div');
+    item.className = 'bio-item';
+
+    const left = document.createElement('div');
+    const timeDiv = document.createElement('div');
+    timeDiv.className = 'bio-time';
+    timeDiv.textContent = fmtDateShort(rec.time);
+    left.appendChild(timeDiv);
+
+    const valsDiv = document.createElement('div');
+    valsDiv.className = 'bio-vals';
+    const parts = [];
+    if (rec.weight) parts.push('⚖ ' + rec.weight + 'kg');
+    if (rec.hr) parts.push('♥ ' + rec.hr + 'bpm');
+    if (rec.glucose) parts.push('◆ ' + rec.glucose + 'mg/dL');
+    if (rec.sys && rec.dia) parts.push('▲ ' + rec.sys + '/' + rec.dia);
+    valsDiv.textContent = parts.join('   ') || '（無數值）';
+    left.appendChild(valsDiv);
+
+    item.appendChild(left);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'bio-remove';
+    removeBtn.textContent = '✕';
+    removeBtn.addEventListener('click', () => {
+      bioRecords = bioRecords.filter((r) => r.id !== rec.id);
+      saveBio();
+      renderBioList();
+      renderCharts();
+    });
+    item.appendChild(removeBtn);
+
+    bioList.appendChild(item);
+  });
+}
+
+bioAddBtn.addEventListener('click', () => {
+  const weight = parseFloat(weightInput.value);
+  const hr = parseFloat(hrInput.value);
+  const glucose = parseFloat(glucoseInput.value);
+  const sys = parseFloat(sysInput.value);
+  const dia = parseFloat(diaInput.value);
+
+  if (!weight && !hr && !glucose && !(sys && dia)) {
+    alert('請至少填寫一項數值（體重、心跳、血糖，或完整的血壓收縮/舒張壓）');
+    return;
+  }
+
+  bioRecords.push({
+    id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+    time: Date.now(),
+    weight: isNaN(weight) ? null : weight,
+    hr: isNaN(hr) ? null : hr,
+    glucose: isNaN(glucose) ? null : glucose,
+    sys: isNaN(sys) ? null : sys,
+    dia: isNaN(dia) ? null : dia,
+  });
+  saveBio();
+  renderBioList();
+  renderCharts();
+
+  weightInput.value = '';
+  hrInput.value = '';
+  glucoseInput.value = '';
+  sysInput.value = '';
+  diaInput.value = '';
+});
+
+/* ---------------- 趨勢圖表 ---------------- */
+const CHART_W = 300;
+const CHART_H = 60;
+const MAX_POINTS = 20;
+
+function buildPolyline(values, w, h, min, max) {
+  if (values.length === 0) return '';
+  const range = (max - min) || 1;
+  const stepX = values.length > 1 ? w / (values.length - 1) : 0;
+  return values.map((v, i) => {
+    const x = values.length > 1 ? i * stepX : w / 2;
+    const y = h - ((v - min) / range) * (h - 8) - 4;
+    return x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+}
+
+function makeSparklineSVG(seriesList) {
+  const allVals = seriesList.flatMap(s => s.values);
+  if (allVals.length === 0) return null;
+  const min = Math.min(...allVals);
+  const max = Math.max(...allVals);
+  let svg = `<svg class="sparkline" viewBox="0 0 ${CHART_W} ${CHART_H}" preserveAspectRatio="none">`;
+  seriesList.forEach(s => {
+    if (s.values.length === 0) return;
+    const pts = buildPolyline(s.values, CHART_W, CHART_H, min, max);
+    svg += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`;
+    const lastX = s.values.length > 1 ? CHART_W : CHART_W / 2;
+    const range = (max - min) || 1;
+    const lastY = CHART_H - ((s.values[s.values.length - 1] - min) / range) * (CHART_H - 8) - 4;
+    svg += `<circle cx="${lastX}" cy="${lastY.toFixed(1)}" r="3.2" fill="${s.color}" />`;
+  });
+  svg += `</svg>`;
+  return svg;
+}
+
+function buildChartCard(label, unit, records, valueKey, color, latestFormatter) {
+  const filtered = records.filter(r => r[valueKey] != null).sort((a, b) => a.time - b.time).slice(-MAX_POINTS);
+  const card = document.createElement('div');
+  card.className = 'chart-card';
+
+  const head = document.createElement('div');
+  head.className = 'chart-head';
+  const labelEl = document.createElement('div');
+  labelEl.className = 'chart-label';
+  labelEl.textContent = label;
+  head.appendChild(labelEl);
+
+  const latestEl = document.createElement('div');
+  latestEl.className = 'chart-latest';
+  latestEl.style.color = color;
+  if (filtered.length > 0) {
+    const last = filtered[filtered.length - 1];
+    latestEl.textContent = latestFormatter(last) + ' ' + unit;
+  } else {
+    latestEl.textContent = '—';
+  }
+  head.appendChild(latestEl);
+  card.appendChild(head);
+
+  if (filtered.length < 2) {
+    const empty = document.createElement('div');
+    empty.className = 'chart-empty';
+    empty.textContent = filtered.length === 0 ? '尚無資料，記錄兩筆以上即可看到趨勢' : '再記錄一筆即可畫出趨勢線';
+    card.appendChild(empty);
+    return card;
+  }
+
+  const svgHtml = makeSparklineSVG([{ values: filtered.map(r => r[valueKey]), color }]);
+  const wrap = document.createElement('div');
+  wrap.innerHTML = svgHtml;
+  card.appendChild(wrap.firstChild);
+
+  return card;
+}
+
+function buildBpChartCard(records) {
+  const filtered = records.filter(r => r.sys != null && r.dia != null).sort((a, b) => a.time - b.time).slice(-MAX_POINTS);
+  const card = document.createElement('div');
+  card.className = 'chart-card';
+
+  const head = document.createElement('div');
+  head.className = 'chart-head';
+  const labelEl = document.createElement('div');
+  labelEl.className = 'chart-label';
+  labelEl.textContent = '血壓';
+  head.appendChild(labelEl);
+
+  const latestEl = document.createElement('div');
+  latestEl.className = 'chart-latest';
+  latestEl.style.color = 'var(--amber)';
+  if (filtered.length > 0) {
+    const last = filtered[filtered.length - 1];
+    latestEl.textContent = last.sys + '/' + last.dia + ' mmHg';
+  } else {
+    latestEl.textContent = '—';
+  }
+  head.appendChild(latestEl);
+  card.appendChild(head);
+
+  if (filtered.length < 2) {
+    const empty = document.createElement('div');
+    empty.className = 'chart-empty';
+    empty.textContent = filtered.length === 0 ? '尚無資料，記錄兩筆以上即可看到趨勢' : '再記錄一筆即可畫出趨勢線';
+    card.appendChild(empty);
+    return card;
+  }
+
+  const svgHtml = makeSparklineSVG([
+    { values: filtered.map(r => r.sys), color: '#f2b134' },
+    { values: filtered.map(r => r.dia), color: '#2dd4bf' },
+  ]);
+  const wrap = document.createElement('div');
+  wrap.innerHTML = svgHtml;
+  card.appendChild(wrap.firstChild);
+
+  const legend = document.createElement('div');
+  legend.className = 'chart-legend';
+  legend.innerHTML = `<span><span class="legend-dot" style="background:#f2b134"></span>收縮壓</span><span><span class="legend-dot" style="background:#2dd4bf"></span>舒張壓</span>`;
+  card.appendChild(legend);
+
+  return card;
+}
+
+function renderCharts() {
+  chartGrid.innerHTML = '';
+  if (bioRecords.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'chart-empty';
+    empty.textContent = '尚無任何記錄，先到「記錄」頁新增體重 / 血糖 / 血壓 / 心跳吧';
+    chartGrid.appendChild(empty);
+    return;
+  }
+  chartGrid.appendChild(buildChartCard('體重', 'kg', bioRecords, 'weight', '#60a5fa', r => r.weight));
+  chartGrid.appendChild(buildChartCard('心跳', 'bpm', bioRecords, 'hr', '#fb7185', r => r.hr));
+  chartGrid.appendChild(buildChartCard('血糖', 'mg/dL', bioRecords, 'glucose', '#a78bfa', r => r.glucose));
+  chartGrid.appendChild(buildBpChartCard(bioRecords));
+}
+
+/* ---------------- 離線狀態 ---------------- */
+function updateOnlineStatus() { offlineBadge.classList.toggle('show', !navigator.onLine); }
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) updateDisplay(); });
+
+/* ---------------- Service Worker ---------------- */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  });
+}
+
+/* ---------------- 初始化 ---------------- */
+loadState();
+goalSelect.value = String(state.goalHours || 120);
+startInput.value = toLocalDatetimeInputValue(state.startTime || Date.now());
+updateOnlineStatus();
+renderBioList();
+renderCharts();
+updateDisplay();
+tick();
+</script>
+</body>
+</html>

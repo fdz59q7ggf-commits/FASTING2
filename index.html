@@ -43,7 +43,8 @@
   }
   #app {
     width: 100%; max-width: 480px; margin: 0 auto;
-    height: 100dvh;
+    height: 100vh;
+    height: 100svh;
     background: var(--bg);
     display: flex; flex-direction: column;
     position: relative;
@@ -52,7 +53,7 @@
   /* 桌機/較寬螢幕：呈現手機外框樣式，避免內容被拉伸到滿版 */
   @media (min-width: 620px) {
     #app {
-      height: min(100dvh, 860px);
+      height: min(100svh, 860px);
       max-height: 860px;
       margin: 20px auto;
       border-radius: 32px;
@@ -99,6 +100,12 @@
 
   /* ================= HOME VIEW（不超出螢幕）================= */
   #home-view { justify-content: flex-start; }
+  .home-main-card {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
 
   .setup-row { display: flex; gap: 8px; min-width: 0; }
   .field { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
@@ -110,8 +117,11 @@
   }
   .field select:focus, .field input:focus { outline: 1px solid var(--teal); }
 
-  .ring-section { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; }
-  .ring-wrap { position: relative; width: 208px; height: 208px; margin: 6px 0; }
+  .ring-section {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; min-height: 0;
+  }
+  .ring-wrap { position: relative; width: 248px; height: 248px; margin: 6px 0; max-width: 78vw; max-height: 78vw; }
   .ring-bg {
     position: absolute; inset: 0; border-radius: 50%;
     background: conic-gradient(var(--teal) calc(var(--pct, 0) * 1%), #1b2438 0);
@@ -121,9 +131,9 @@
     background: var(--card);
     display: flex; flex-direction: column; align-items: center; justify-content: center;
   }
-  .pct-text { font-size: 11px; color: var(--text-dim); margin-bottom: 2px; font-family: var(--mono); }
-  .elapsed-text { font-size: 27px; font-weight: 700; font-family: var(--mono); }
-  .goal-text { font-size: 10px; color: var(--text-faint); margin-top: 4px; font-family: var(--mono); }
+  .pct-text { font-size: 12px; color: var(--text-dim); margin-bottom: 3px; font-family: var(--mono); }
+  .elapsed-text { font-size: 31px; font-weight: 700; font-family: var(--mono); }
+  .goal-text { font-size: 11px; color: var(--text-faint); margin-top: 5px; font-family: var(--mono); }
   .badge {
     position: absolute; width: 22px; height: 22px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
@@ -221,8 +231,7 @@
   <div class="view active" id="home-view">
     <div class="offline-badge" id="offlineBadge">OFFLINE · 持續計時中</div>
 
-    <div class="card">
-      <div class="setup-row">
+    <div class="card home-main-card">
         <div class="field">
           <label>斷食開始時間</label>
           <input type="datetime-local" id="startInput" />
@@ -453,8 +462,9 @@ function renderBadges(elapsedHours, goalHours) {
   ringWrap.querySelectorAll('.badge').forEach(b => b.remove());
   const maxScale = Math.max(goalHours, ...MILESTONES.filter(m => m <= goalHours * 1.4));
   const relevant = MILESTONES.filter(m => m <= maxScale);
-  const radius = 104;
-  const center = 104;
+  const wrapSize = ringWrap.clientWidth || 248;
+  const center = wrapSize / 2;
+  const radius = center - 18;
   relevant.forEach((m) => {
     const angleDeg = (m / maxScale) * 360 - 90;
     const rad = (angleDeg * Math.PI) / 180;
@@ -523,17 +533,30 @@ function checkMilestoneNotify(elapsedHours) {
   });
 }
 
-function tick() { updateDisplay(); requestAnimationFrame(tick); }
+let lastStartFieldRefreshSec = -1;
+function tick() {
+  updateDisplay();
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!state.running && !startInputManuallyEdited && document.activeElement !== startInput && nowSec !== lastStartFieldRefreshSec) {
+    lastStartFieldRefreshSec = nowSec;
+    startInput.value = toLocalDatetimeInputValue(Date.now());
+  }
+  requestAnimationFrame(tick);
+}
 
 /* ---------------- 開始 / 結束 ---------------- */
+let startInputManuallyEdited = false;
+startInput.addEventListener('input', () => { startInputManuallyEdited = true; });
+
 startBtn.addEventListener('click', () => {
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
-  const inputVal = startInput.value;
-  const startMs = inputVal ? new Date(inputVal).getTime() : Date.now();
+  // 除非使用者手動修改過開始時間欄位，否則一律使用「按下當下」的時間，避免計時器一開始就已經算了一段時間
+  const startMs = (startInputManuallyEdited && startInput.value) ? new Date(startInput.value).getTime() : Date.now();
   state.running = true;
   state.startTime = startMs;
   state.goalHours = Number(goalSelect.value) || 24;
   notifiedMilestones = {};
+  startInputManuallyEdited = false;
   saveState();
   updateDisplay();
 });
@@ -600,6 +623,7 @@ function renderBioList() {
 }
 
 bioAddBtn.addEventListener('click', () => {
+  if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
   const weight = parseFloat(weightInput.value);
   const hr = parseFloat(hrInput.value);
   const glucose = parseFloat(glucoseInput.value);

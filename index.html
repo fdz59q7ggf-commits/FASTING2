@@ -218,6 +218,15 @@
   .empty-hint { text-align: center; color: var(--text-faint); font-size: 13px; padding: 14px 0; }
 
   /* ================= CHART VIEW ================= */
+  .stats-summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
+  .stats-card { background: #0e1728; border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; transition: var(--transition); }
+  .stats-card:hover { border-color: var(--card-border-hover); box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1); }
+  .stats-label { font-size: 11px; color: var(--text-dim); font-weight: 700; margin-bottom: 4px; }
+  .stats-value { font-size: 18px; font-weight: 700; font-family: var(--mono); color: var(--teal); margin-bottom: 4px; }
+  .stats-change { font-size: 11px; font-family: var(--mono); color: var(--text-faint); }
+  .stats-change.positive { color: #22c55e; }
+  .stats-change.negative { color: var(--danger); }
+  
   .chart-grid { display: flex; flex-direction: column; gap: 12px; }
   .chart-card { background: #0e1728; border: 1px solid var(--card-border); border-radius: 14px; padding: 12px 14px; flex-shrink: 0; transition: var(--transition); }
   .chart-card:hover { border-color: var(--card-border-hover); box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1); }
@@ -364,6 +373,7 @@
   <!-- ===================== CHART VIEW ===================== -->
   <div class="view" id="chart-view">
     <div class="page-title" style="flex-shrink:0;">📈 趨勢統計</div>
+    <div class="stats-summary" id="statsSummary" style="flex-shrink:0;"></div>
     <div class="chart-grid scroll-region" id="chartGrid"></div>
     <div class="disclaimer" style="flex-shrink:0;">
       各階段之身體變化說明僅供一般參考，並非醫療建議。超過 24–48 小時的長時間斷食建議在醫師或營養師監督下進行；若有糖尿病、低血糖、心血管疾病、服用藥物、懷孕或曾有飲食失調經驗，請先諮詢專業醫療人員。若斷食期間感到頭暈、心悸、極度不適，請立即停止並補充飲食。
@@ -824,7 +834,89 @@ function buildBpChartCard(records) {
   return card;
 }
 
+function buildStatsCard(label, unit, records, valueKey, icon) {
+  const card = document.createElement('div');
+  card.className = 'stats-card';
+  
+  const labelEl = document.createElement('div');
+  labelEl.className = 'stats-label';
+  labelEl.textContent = `${icon} ${label}`;
+  card.appendChild(labelEl);
+  
+  const filtered = records.filter(r => r[valueKey] != null);
+  if (filtered.length === 0) {
+    card.innerHTML += '<div class="stats-value">—</div><div class="stats-change">無數據</div>';
+    return card;
+  }
+  
+  const values = filtered.map(r => r[valueKey]);
+  const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+  const max = Math.max(...values).toFixed(1);
+  const min = Math.min(...values).toFixed(1);
+  const latest = values[values.length - 1].toFixed(1);
+  const prev = values.length > 1 ? values[values.length - 2].toFixed(1) : latest;
+  const change = (latest - prev).toFixed(1);
+  const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : '';
+  const changeSymbol = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+  
+  const valueEl = document.createElement('div');
+  valueEl.className = 'stats-value';
+  valueEl.textContent = `${latest} ${unit}`;
+  card.appendChild(valueEl);
+  
+  const statsEl = document.createElement('div');
+  statsEl.className = 'stats-change';
+  statsEl.innerHTML = `
+    <div>平均: ${avg}</div>
+    <div class="${changeClass}">最近: ${changeSymbol} ${Math.abs(change)}</div>
+    <div style="font-size:10px; color:var(--text-faint);">高:${max} 低:${min}</div>
+  `;
+  card.appendChild(statsEl);
+  
+  return card;
+}
+
+function renderStatsSummary() {
+  const statsSummary = document.getElementById('statsSummary');
+  statsSummary.innerHTML = '';
+  
+  if (bioRecords.length === 0) return;
+  
+  statsSummary.appendChild(buildStatsCard('體重', 'kg', bioRecords, 'weight', '⚖'));
+  statsSummary.appendChild(buildStatsCard('心率', 'bpm', bioRecords, 'hr', '♥'));
+  statsSummary.appendChild(buildStatsCard('血糖', 'mg/dL', bioRecords, 'glucose', '◆'));
+  
+  const bpFiltered = bioRecords.filter(r => r.sys != null && r.dia != null);
+  if (bpFiltered.length > 0) {
+    const sysValues = bpFiltered.map(r => r.sys);
+    const diaValues = bpFiltered.map(r => r.dia);
+    const sysAvg = (sysValues.reduce((a, b) => a + b, 0) / sysValues.length).toFixed(0);
+    const diaAvg = (diaValues.reduce((a, b) => a + b, 0) / diaValues.length).toFixed(0);
+    
+    const bpCard = document.createElement('div');
+    bpCard.className = 'stats-card';
+    const labelEl = document.createElement('div');
+    labelEl.className = 'stats-label';
+    labelEl.textContent = '▲ 血壓';
+    bpCard.appendChild(labelEl);
+    
+    const latest = bpFiltered[bpFiltered.length - 1];
+    const valueEl = document.createElement('div');
+    valueEl.className = 'stats-value';
+    valueEl.textContent = `${latest.sys}/${latest.dia}`;
+    bpCard.appendChild(valueEl);
+    
+    const statsEl = document.createElement('div');
+    statsEl.className = 'stats-change';
+    statsEl.innerHTML = `<div>平均: ${sysAvg}/${diaAvg}</div><div style="font-size:10px;">共 ${bpFiltered.length} 筆</div>`;
+    bpCard.appendChild(statsEl);
+    
+    statsSummary.appendChild(bpCard);
+  }
+}
+
 function renderCharts() {
+  renderStatsSummary();
   chartGrid.innerHTML = '';
   if (bioRecords.length === 0) {
     const empty = document.createElement('div');

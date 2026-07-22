@@ -89,10 +89,6 @@
     flex-shrink: 0;
     transition: var(--transition);
   }
-  .card:hover {
-    border-color: var(--card-border-hover);
-    box-shadow: 0 0 20px rgba(45, 212, 191, 0.15);
-  }
   .page-title {
     font-size: 15px; font-weight: 800; text-align: center;
     margin: 2px 0 10px; letter-spacing: 0.02em; flex-shrink: 0;
@@ -162,10 +158,8 @@
   .controls { display: flex; gap: 8px; margin-top: 4px; flex-shrink: 0; }
   button { font-family: var(--sans); border: none; cursor: pointer; border-radius: 12px; font-weight: 700; font-size: 14px; transition: var(--transition); }
   .btn-primary { flex: 2; background: var(--teal); color: #04211c; padding: 11px; }
-  .btn-primary:hover { box-shadow: 0 4px 12px rgba(45, 212, 191, 0.3); transform: translateY(-1px); }
   .btn-primary:active { opacity: 0.9; transform: translateY(0); }
   .btn-secondary { flex: 1; background: #182337; border: 1px solid var(--card-border); color: var(--text); padding: 11px; transition: var(--transition); }
-  .btn-secondary:hover { border-color: var(--teal); background: rgba(45, 212, 191, 0.05); }
   .btn-secondary:active { opacity: 0.8; }
 
   .startend { display: flex; justify-content: space-between; font-size: 11px; margin-top: 8px; color: var(--text-faint); font-family: var(--mono); flex-shrink: 0; }
@@ -194,7 +188,6 @@
   .bio-form .field { min-width: 0; }
   .bio-form input { min-width: 0; width: 100%; }
   .bio-add-btn { grid-column: 1 / -1; background: var(--teal); color: #04211c; padding: 11px 14px; border-radius: 12px; font-weight: 700; font-size: 13px; transition: var(--transition); cursor: pointer; border: none; }
-  .bio-add-btn:hover { box-shadow: 0 4px 12px rgba(45, 212, 191, 0.3); transform: translateY(-1px); }
   .bio-add-btn:active { opacity: 0.9; transform: translateY(0); }
 
   .bio-list { display: flex; flex-direction: column; gap: 8px; }
@@ -204,23 +197,16 @@
     padding: 8px 10px; font-size: 13px;
     transition: var(--transition);
   }
-  .bio-item:hover {
-    border-color: var(--teal);
-    box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1);
-  }
   .bio-item .bio-time { color: var(--text-faint); font-size: 10px; font-family: var(--mono); }
   .bio-item .bio-vals { display: flex; gap: 8px; font-weight: 600; font-family: var(--mono); font-size: 11.5px; flex-wrap: wrap; }
   .bio-item .bio-remove { background: transparent; color: var(--text-faint); font-size: 16px; padding: 2px 4px; border: none; cursor: pointer; transition: color 0.2s; }
-  .bio-item .bio-remove:hover { color: var(--danger); }
   .btn-clear-data { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger); color: var(--danger); padding: 10px 14px; border-radius: 12px; font-weight: 700; font-size: 13px; cursor: pointer; transition: var(--transition); }
-  .btn-clear-data:hover { background: rgba(239, 68, 68, 0.3); box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2); }
   .btn-clear-data:active { opacity: 0.8; }
   .empty-hint { text-align: center; color: var(--text-faint); font-size: 13px; padding: 14px 0; }
 
   /* ================= CHART VIEW ================= */
   .stats-summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
   .stats-card { background: #0e1728; border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; transition: var(--transition); }
-  .stats-card:hover { border-color: var(--card-border-hover); box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1); }
   .stats-label { font-size: 11px; color: var(--text-dim); font-weight: 700; margin-bottom: 4px; }
   .stats-value { font-size: 18px; font-weight: 700; font-family: var(--mono); color: var(--teal); margin-bottom: 4px; }
   .stats-change { font-size: 11px; font-family: var(--mono); color: var(--text-faint); }
@@ -229,7 +215,6 @@
   
   .chart-grid { display: flex; flex-direction: column; gap: 12px; }
   .chart-card { background: #0e1728; border: 1px solid var(--card-border); border-radius: 14px; padding: 12px 14px; flex-shrink: 0; transition: var(--transition); }
-  .chart-card:hover { border-color: var(--card-border-hover); box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1); }
   .chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
   .chart-label { font-size: 12px; color: var(--text-dim); font-weight: 700; }
   .chart-latest { font-size: 15px; font-weight: 700; font-family: var(--mono); }
@@ -257,10 +242,23 @@
     padding: 6px 0 0;
     transition: var(--transition);
   }
-  .tab-btn:hover { color: var(--text-dim); }
   .tab-btn .tab-icon { font-size: 19px; line-height: 1; transition: var(--transition); }
   .tab-btn.active { color: var(--teal); }
   .tab-btn.active .tab-icon { filter: drop-shadow(0 0 6px rgba(45,212,191,0.5)); transform: scale(1.1); }
+
+  /* ================= HOVER（僅滑鼠/觸控板裝置生效，避免手機點擊後樣式卡住）================= */
+  @media (hover: hover) and (pointer: fine) {
+    .card:hover { border-color: var(--card-border-hover); box-shadow: 0 0 20px rgba(45, 212, 191, 0.15); }
+    .btn-primary:hover { box-shadow: 0 4px 12px rgba(45, 212, 191, 0.3); transform: translateY(-1px); }
+    .btn-secondary:hover { border-color: var(--teal); background: rgba(45, 212, 191, 0.05); }
+    .bio-add-btn:hover { box-shadow: 0 4px 12px rgba(45, 212, 191, 0.3); transform: translateY(-1px); }
+    .bio-item:hover { border-color: var(--teal); box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1); }
+    .bio-item .bio-remove:hover { color: var(--danger); }
+    .btn-clear-data:hover { background: rgba(239, 68, 68, 0.3); box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2); }
+    .stats-card:hover { border-color: var(--card-border-hover); box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1); }
+    .chart-card:hover { border-color: var(--card-border-hover); box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1); }
+    .tab-btn:hover { color: var(--text-dim); }
+  }
 </style>
 </head>
 <body>
@@ -700,14 +698,16 @@ bioAddBtn.addEventListener('click', () => {
 
 /* ---------- 清空數據（帶安全確認）---------- */
 clearDataBtn.addEventListener('click', () => {
-  if (confirm('⚠️ 確定要刪除所有生物數據嗎？此操作無法復原！')) {
-    if (confirm('再次確認：刪除所有數據？')) {
-      bioRecords = [];
-      saveBio();
-      renderBioList();
-      renderCharts();
-      alert('✅ 所有數據已清空');
-    }
+  const count = bioRecords.length;
+  if (count === 0) {
+    alert('目前沒有任何記錄可以清空。');
+    return;
+  }
+  if (confirm(`確定要刪除全部 ${count} 筆記錄嗎？此操作無法復原。`)) {
+    bioRecords = [];
+    saveBio();
+    renderBioList();
+    renderCharts();
   }
 });
 
@@ -755,19 +755,8 @@ function buildChartCard(label, unit, records, valueKey, color, latestFormatter) 
   head.className = 'chart-head';
   const labelEl = document.createElement('div');
   labelEl.className = 'chart-label';
-  labelEl.textContent = label;
+  labelEl.textContent = label + ' 趨勢';
   head.appendChild(labelEl);
-
-  const latestEl = document.createElement('div');
-  latestEl.className = 'chart-latest';
-  latestEl.style.color = color;
-  if (filtered.length > 0) {
-    const last = filtered[filtered.length - 1];
-    latestEl.textContent = latestFormatter(last) + ' ' + unit;
-  } else {
-    latestEl.textContent = '—';
-  }
-  head.appendChild(latestEl);
   card.appendChild(head);
 
   if (filtered.length < 2) {
@@ -795,19 +784,8 @@ function buildBpChartCard(records) {
   head.className = 'chart-head';
   const labelEl = document.createElement('div');
   labelEl.className = 'chart-label';
-  labelEl.textContent = '血壓';
+  labelEl.textContent = '血壓 趨勢';
   head.appendChild(labelEl);
-
-  const latestEl = document.createElement('div');
-  latestEl.className = 'chart-latest';
-  latestEl.style.color = 'var(--amber)';
-  if (filtered.length > 0) {
-    const last = filtered[filtered.length - 1];
-    latestEl.textContent = last.sys + '/' + last.dia + ' mmHg';
-  } else {
-    latestEl.textContent = '—';
-  }
-  head.appendChild(latestEl);
   card.appendChild(head);
 
   if (filtered.length < 2) {

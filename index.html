@@ -11,6 +11,7 @@
     --bg: #0b1220;
     --card: #121a2b;
     --card-border: #223049;
+    --card-border-hover: #2dd4bf;
     --text: #eef2f7;
     --text-dim: #8b96a8;
     --text-faint: #566178;
@@ -27,6 +28,7 @@
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
 
     --nav-h: 62px;
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   * { box-sizing: border-box; }
   html, body {
@@ -85,6 +87,11 @@
     padding: 14px;
     margin-bottom: 10px;
     flex-shrink: 0;
+    transition: var(--transition);
+  }
+  .card:hover {
+    border-color: var(--card-border-hover);
+    box-shadow: 0 0 20px rgba(45, 212, 191, 0.15);
   }
   .page-title {
     font-size: 15px; font-weight: 800; text-align: center;
@@ -114,8 +121,14 @@
     font-family: var(--sans); font-size: 13px; padding: 7px 8px;
     border-radius: 9px; border: 1px solid var(--card-border);
     background: #0e1728; color: var(--text);
+    transition: var(--transition);
   }
-  .field select:focus, .field input:focus { outline: 1px solid var(--teal); }
+  .field select:focus, .field input:focus {
+    outline: none;
+    border-color: var(--teal);
+    box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.2);
+    background: rgba(14, 23, 40, 0.8);
+  }
 
   .ring-section {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -147,10 +160,13 @@
   .badge.todo { background: var(--slate); color: var(--text-dim); }
 
   .controls { display: flex; gap: 8px; margin-top: 4px; flex-shrink: 0; }
-  button { font-family: var(--sans); border: none; cursor: pointer; border-radius: 12px; font-weight: 700; font-size: 14px; }
+  button { font-family: var(--sans); border: none; cursor: pointer; border-radius: 12px; font-weight: 700; font-size: 14px; transition: var(--transition); }
   .btn-primary { flex: 2; background: var(--teal); color: #04211c; padding: 11px; }
-  .btn-secondary { flex: 1; background: #182337; border: 1px solid var(--card-border); color: var(--text); padding: 11px; }
-  .btn-primary:active, .btn-secondary:active { opacity: 0.7; }
+  .btn-primary:hover { box-shadow: 0 4px 12px rgba(45, 212, 191, 0.3); transform: translateY(-1px); }
+  .btn-primary:active { opacity: 0.9; transform: translateY(0); }
+  .btn-secondary { flex: 1; background: #182337; border: 1px solid var(--card-border); color: var(--text); padding: 11px; transition: var(--transition); }
+  .btn-secondary:hover { border-color: var(--teal); background: rgba(45, 212, 191, 0.05); }
+  .btn-secondary:active { opacity: 0.8; }
 
   .startend { display: flex; justify-content: space-between; font-size: 11px; margin-top: 8px; color: var(--text-faint); font-family: var(--mono); flex-shrink: 0; }
   .startend b { color: var(--text); font-weight: 700; }
@@ -177,22 +193,43 @@
   .bio-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 10px; min-width: 0; }
   .bio-form .field { min-width: 0; }
   .bio-form input { min-width: 0; width: 100%; }
-  .bio-add-btn { grid-column: 1 / -1; background: var(--teal); color: #04211c; padding: 11px 14px; border-radius: 12px; font-weight: 700; font-size: 13px; }
+  .bio-add-btn { grid-column: 1 / -1; background: var(--teal); color: #04211c; padding: 11px 14px; border-radius: 12px; font-weight: 700; font-size: 13px; transition: var(--transition); cursor: pointer; border: none; }
+  .bio-add-btn:hover { box-shadow: 0 4px 12px rgba(45, 212, 191, 0.3); transform: translateY(-1px); }
+  .bio-add-btn:active { opacity: 0.9; transform: translateY(0); }
 
   .bio-list { display: flex; flex-direction: column; gap: 8px; }
   .bio-item {
     display: flex; align-items: center; justify-content: space-between;
     background: #0e1728; border: 1px solid var(--card-border); border-radius: 12px;
     padding: 8px 10px; font-size: 13px;
+    transition: var(--transition);
+  }
+  .bio-item:hover {
+    border-color: var(--teal);
+    box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1);
   }
   .bio-item .bio-time { color: var(--text-faint); font-size: 10px; font-family: var(--mono); }
   .bio-item .bio-vals { display: flex; gap: 8px; font-weight: 600; font-family: var(--mono); font-size: 11.5px; flex-wrap: wrap; }
-  .bio-item .bio-remove { background: transparent; color: var(--text-faint); font-size: 16px; padding: 2px 4px; border: none; }
+  .bio-item .bio-remove { background: transparent; color: var(--text-faint); font-size: 16px; padding: 2px 4px; border: none; cursor: pointer; transition: color 0.2s; }
+  .bio-item .bio-remove:hover { color: var(--danger); }
+  .btn-clear-data { background: rgba(239, 68, 68, 0.2); border: 1px solid var(--danger); color: var(--danger); padding: 10px 14px; border-radius: 12px; font-weight: 700; font-size: 13px; cursor: pointer; transition: var(--transition); }
+  .btn-clear-data:hover { background: rgba(239, 68, 68, 0.3); box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2); }
+  .btn-clear-data:active { opacity: 0.8; }
   .empty-hint { text-align: center; color: var(--text-faint); font-size: 13px; padding: 14px 0; }
 
   /* ================= CHART VIEW ================= */
+  .stats-summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
+  .stats-card { background: #0e1728; border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; transition: var(--transition); }
+  .stats-card:hover { border-color: var(--card-border-hover); box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1); }
+  .stats-label { font-size: 11px; color: var(--text-dim); font-weight: 700; margin-bottom: 4px; }
+  .stats-value { font-size: 18px; font-weight: 700; font-family: var(--mono); color: var(--teal); margin-bottom: 4px; }
+  .stats-change { font-size: 11px; font-family: var(--mono); color: var(--text-faint); }
+  .stats-change.positive { color: #22c55e; }
+  .stats-change.negative { color: var(--danger); }
+  
   .chart-grid { display: flex; flex-direction: column; gap: 12px; }
-  .chart-card { background: #0e1728; border: 1px solid var(--card-border); border-radius: 14px; padding: 12px 14px; flex-shrink: 0; }
+  .chart-card { background: #0e1728; border: 1px solid var(--card-border); border-radius: 14px; padding: 12px 14px; flex-shrink: 0; transition: var(--transition); }
+  .chart-card:hover { border-color: var(--card-border-hover); box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1); }
   .chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
   .chart-label { font-size: 12px; color: var(--text-dim); font-weight: 700; }
   .chart-latest { font-size: 15px; font-weight: 700; font-family: var(--mono); }
@@ -218,10 +255,12 @@
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     color: var(--text-faint); font-size: 10.5px; font-weight: 700; font-family: var(--sans);
     padding: 6px 0 0;
+    transition: var(--transition);
   }
-  .tab-btn .tab-icon { font-size: 19px; line-height: 1; }
+  .tab-btn:hover { color: var(--text-dim); }
+  .tab-btn .tab-icon { font-size: 19px; line-height: 1; transition: var(--transition); }
   .tab-btn.active { color: var(--teal); }
-  .tab-btn.active .tab-icon { filter: drop-shadow(0 0 6px rgba(45,212,191,0.5)); }
+  .tab-btn.active .tab-icon { filter: drop-shadow(0 0 6px rgba(45,212,191,0.5)); transform: scale(1.1); }
 </style>
 </head>
 <body>
@@ -327,12 +366,14 @@
     <div class="card" style="flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden;">
       <div class="section-title" style="flex-shrink:0;">歷史紀錄</div>
       <div class="bio-list scroll-region" id="bioList"></div>
+      <button class="btn-clear-data" id="clearDataBtn" style="margin-top:8px; flex-shrink:0;">🗑️ 清空所有數據</button>
     </div>
   </div>
 
   <!-- ===================== CHART VIEW ===================== -->
   <div class="view" id="chart-view">
     <div class="page-title" style="flex-shrink:0;">📈 趨勢統計</div>
+    <div class="stats-summary" id="statsSummary" style="flex-shrink:0;"></div>
     <div class="chart-grid scroll-region" id="chartGrid"></div>
     <div class="disclaimer" style="flex-shrink:0;">
       各階段之身體變化說明僅供一般參考，並非醫療建議。超過 24–48 小時的長時間斷食建議在醫師或營養師監督下進行；若有糖尿病、低血糖、心血管疾病、服用藥物、懷孕或曾有飲食失調經驗，請先諮詢專業醫療人員。若斷食期間感到頭暈、心悸、極度不適，請立即停止並補充飲食。
@@ -427,6 +468,7 @@ const glucoseInput = document.getElementById('glucoseInput');
 const sysInput = document.getElementById('sysInput');
 const diaInput = document.getElementById('diaInput');
 const bioAddBtn = document.getElementById('bioAddBtn');
+const clearDataBtn = document.getElementById('clearDataBtn');
 const bioList = document.getElementById('bioList');
 const chartGrid = document.getElementById('chartGrid');
 
@@ -656,6 +698,19 @@ bioAddBtn.addEventListener('click', () => {
   diaInput.value = '';
 });
 
+/* ---------- 清空數據（帶安全確認）---------- */
+clearDataBtn.addEventListener('click', () => {
+  if (confirm('⚠️ 確定要刪除所有生物數據嗎？此操作無法復原！')) {
+    if (confirm('再次確認：刪除所有數據？')) {
+      bioRecords = [];
+      saveBio();
+      renderBioList();
+      renderCharts();
+      alert('✅ 所有數據已清空');
+    }
+  }
+});
+
 /* ---------------- 趨勢圖表 ---------------- */
 const CHART_W = 300;
 const CHART_H = 60;
@@ -779,7 +834,89 @@ function buildBpChartCard(records) {
   return card;
 }
 
+function buildStatsCard(label, unit, records, valueKey, icon) {
+  const card = document.createElement('div');
+  card.className = 'stats-card';
+  
+  const labelEl = document.createElement('div');
+  labelEl.className = 'stats-label';
+  labelEl.textContent = `${icon} ${label}`;
+  card.appendChild(labelEl);
+  
+  const filtered = records.filter(r => r[valueKey] != null);
+  if (filtered.length === 0) {
+    card.innerHTML += '<div class="stats-value">—</div><div class="stats-change">無數據</div>';
+    return card;
+  }
+  
+  const values = filtered.map(r => r[valueKey]);
+  const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
+  const max = Math.max(...values).toFixed(1);
+  const min = Math.min(...values).toFixed(1);
+  const latest = values[values.length - 1].toFixed(1);
+  const prev = values.length > 1 ? values[values.length - 2].toFixed(1) : latest;
+  const change = (latest - prev).toFixed(1);
+  const changeClass = change > 0 ? 'positive' : change < 0 ? 'negative' : '';
+  const changeSymbol = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+  
+  const valueEl = document.createElement('div');
+  valueEl.className = 'stats-value';
+  valueEl.textContent = `${latest} ${unit}`;
+  card.appendChild(valueEl);
+  
+  const statsEl = document.createElement('div');
+  statsEl.className = 'stats-change';
+  statsEl.innerHTML = `
+    <div>平均: ${avg}</div>
+    <div class="${changeClass}">最近: ${changeSymbol} ${Math.abs(change)}</div>
+    <div style="font-size:10px; color:var(--text-faint);">高:${max} 低:${min}</div>
+  `;
+  card.appendChild(statsEl);
+  
+  return card;
+}
+
+function renderStatsSummary() {
+  const statsSummary = document.getElementById('statsSummary');
+  statsSummary.innerHTML = '';
+  
+  if (bioRecords.length === 0) return;
+  
+  statsSummary.appendChild(buildStatsCard('體重', 'kg', bioRecords, 'weight', '⚖'));
+  statsSummary.appendChild(buildStatsCard('心率', 'bpm', bioRecords, 'hr', '♥'));
+  statsSummary.appendChild(buildStatsCard('血糖', 'mg/dL', bioRecords, 'glucose', '◆'));
+  
+  const bpFiltered = bioRecords.filter(r => r.sys != null && r.dia != null);
+  if (bpFiltered.length > 0) {
+    const sysValues = bpFiltered.map(r => r.sys);
+    const diaValues = bpFiltered.map(r => r.dia);
+    const sysAvg = (sysValues.reduce((a, b) => a + b, 0) / sysValues.length).toFixed(0);
+    const diaAvg = (diaValues.reduce((a, b) => a + b, 0) / diaValues.length).toFixed(0);
+    
+    const bpCard = document.createElement('div');
+    bpCard.className = 'stats-card';
+    const labelEl = document.createElement('div');
+    labelEl.className = 'stats-label';
+    labelEl.textContent = '▲ 血壓';
+    bpCard.appendChild(labelEl);
+    
+    const latest = bpFiltered[bpFiltered.length - 1];
+    const valueEl = document.createElement('div');
+    valueEl.className = 'stats-value';
+    valueEl.textContent = `${latest.sys}/${latest.dia}`;
+    bpCard.appendChild(valueEl);
+    
+    const statsEl = document.createElement('div');
+    statsEl.className = 'stats-change';
+    statsEl.innerHTML = `<div>平均: ${sysAvg}/${diaAvg}</div><div style="font-size:10px;">共 ${bpFiltered.length} 筆</div>`;
+    bpCard.appendChild(statsEl);
+    
+    statsSummary.appendChild(bpCard);
+  }
+}
+
 function renderCharts() {
+  renderStatsSummary();
   chartGrid.innerHTML = '';
   if (bioRecords.length === 0) {
     const empty = document.createElement('div');

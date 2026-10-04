@@ -248,6 +248,27 @@
   .celebration-circle {
     width: 100px; height: 100px; border-radius: 50%;
     background: linear-gradient(135deg, #7aaaf7, #72d5ef);
+  }
+
+  /* 隱私 / 同意 modal */
+  .consent-overlay {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; z-index: 10010;
+    background: rgba(6,10,15,0.4);
+  }
+  .consent-modal {
+    width: min(720px, 94%); max-width: 720px; background: var(--card-strong); border-radius: 12px; padding: 18px; box-shadow: 0 20px 60px rgba(2,6,13,0.6);
+    color: var(--text); border: 1px solid var(--card-border);
+  }
+  .consent-modal h3 { margin: 0 0 8px 0; font-size: 18px; }
+  .consent-modal p { margin: 6px 0; font-size: 13px; color: var(--text-dim); }
+  .consent-actions { display:flex; gap:8px; justify-content: flex-end; margin-top: 12px; }
+  .consent-actions button { padding: 8px 12px; border-radius: 10px; }
+  .consent-accept { background: linear-gradient(135deg,#7aaaf7,#72d5ef); color: #132a49; font-weight:700; }
+  .consent-decline { background: transparent; border:1px solid rgba(122,170,247,0.12); color: var(--text); }
+
+  .privacy-btn { position: absolute; right: 84px; top: 12px; background: transparent; border: none; font-size: 16px; cursor: pointer; }
+  .clear-data-btn { position: absolute; right: 12px; top: 12px; background: transparent; border: none; font-size: 16px; cursor: pointer; }
+
     display: flex; align-items: center; justify-content: center;
     font-size: 48px;
     box-shadow: 0 0 40px rgba(122,170,247,0.5);
@@ -388,6 +409,8 @@
   <div class="view active" id="home-view">
     <div class="offline-badge" id="offlineBadge">OFFLINE · 持續計時中</div>
     <button class="theme-toggle" id="themeToggle" title="切換深色/淺色模式">🌙</button>
+    <button class="privacy-btn" id="privacyBtn" title="隱私與資料">🔒</button>
+    <button class="clear-data-btn" id="clearDataBtn" title="刪除本機資料">🗑️</button>
 
     <div class="card home-main-card">
       <div class="setup-row">
@@ -603,10 +626,13 @@ function loadState() {
     const raw3 = localStorage.getItem(FASTING_HISTORY_KEY);
     if (raw3) fastingHistory = JSON.parse(raw3);
   } catch (e) {}
+
+  // 同意旗標
+  try { state.consent = localStorage.getItem('fasting_consent_v1') === '1'; } catch (e) { state.consent = false; }
 }
-function saveState() { try { localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch (e) {} }
-function saveBio() { try { localStorage.setItem(BIO_KEY, JSON.stringify(bioRecords)); } catch (e) {} }
-function saveFastingHistory() { try { localStorage.setItem(FASTING_HISTORY_KEY, JSON.stringify(fastingHistory)); } catch (e) {} }
+function saveState() { try { if (state.consent) localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch (e) {} }
+function saveBio() { try { if (state.consent) localStorage.setItem(BIO_KEY, JSON.stringify(bioRecords)); } catch (e) {} }
+function saveFastingHistory() { try { if (state.consent) localStorage.setItem(FASTING_HISTORY_KEY, JSON.stringify(fastingHistory)); } catch (e) {} }
 function exportCurrentData() {
   const payload = {
     exportedAt: new Date().toISOString(),
@@ -1318,6 +1344,49 @@ window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) updateDisplay(); });
 
+/* --------------- 同意對話 & 隱私操作 --------------- */
+function showConsentModal() {
+  if (document.getElementById('consentOverlay')) return;
+  const overlay = document.createElement('div');
+  overlay.id = 'consentOverlay';
+  overlay.className = 'consent-overlay';
+  overlay.innerHTML = `
+    <div class="consent-modal">
+      <h3>隱私與資料處理說明</h3>
+      <p>本應用在您的瀏覽器本機儲存斷食紀錄與生理數據，用於顯示統計與歷史。資料不會自動上傳到任何伺服器，除非您手動匯出並上傳。</p>
+      <p>注意：應用僅提供參考資訊，並非醫療診斷或治療建議。若需醫療意見請諮詢專業醫療人員。</p>
+      <p>處理敏感生理資料前，請閱讀並同意以下內容：您同意此應用以本機方式儲存與處理資料，並可隨時匯出或刪除本機資料。</p>
+      <div style="margin-top:8px; font-size:12px; color:var(--text-faint);">使用本應用即表示您已閱讀並同意上述內容。</div>
+      <div class="consent-actions">
+        <button class="consent-decline" id="consentDecline">不同意</button>
+        <button class="consent-accept" id="consentAccept">同意並繼續</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  document.getElementById('consentAccept').addEventListener('click', () => {
+    state.consent = true;
+    try { localStorage.setItem('fasting_consent_v1', '1'); } catch (e) {}
+    overlay.remove();
+  });
+  document.getElementById('consentDecline').addEventListener('click', () => {
+    alert('未同意則無法儲存或匯入個人健康資料。您仍可離開並使用非儲存模式。');
+    // 保持 overlay，讓使用者決定離開或同意
+  });
+}
+
+document.getElementById('privacyBtn').addEventListener('click', () => showConsentModal());
+document.getElementById('clearDataBtn').addEventListener('click', () => {
+  if (!confirm('確定要刪除所有本機資料？此操作無法還原')) return;
+  try {
+    localStorage.removeItem(STATE_KEY);
+    localStorage.removeItem(BIO_KEY);
+    localStorage.removeItem(FASTING_HISTORY_KEY);
+    localStorage.removeItem('fasting_consent_v1');
+  } catch (e) {}
+  alert('本機資料已刪除，頁面將重新整理。');
+  location.reload();
+});
+
 /* --------------- 鍵盤快捷鍵 --------------- */
 document.addEventListener('keydown', (e) => {
   if (e.target === startInput || e.target === weightInput || e.target === hrInput || 
@@ -1344,6 +1413,9 @@ if ('serviceWorker' in navigator) {
 /* ---------------- 初始化 ---------------- */
 loadState();
 applyTheme();
+// 顯示同意對話（若尚未同意）
+if (!state.consent) showConsentModal();
+
 goalSelect.value = String(state.goalHours || 120);
 startInput.value = toLocalDatetimeInputValue(state.startTime || Date.now());
 updateOnlineStatus();

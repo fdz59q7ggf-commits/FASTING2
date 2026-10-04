@@ -334,6 +334,7 @@
   .history-date { font-size: 11px; color: var(--text-faint); font-family: var(--mono); }
   .history-duration { font-size: 12px; font-weight: 700; color: var(--teal); font-family: var(--mono); }
   .history-meta { font-size: 11px; color: var(--text-dim); }
+  .history-note { font-size: 11px; color: var(--text-dim); padding-top: 4px; border-top: 1px solid rgba(94, 201, 215, 0.1); padding-top: 4px; font-style: italic; }
   .history-empty { font-size: 12px; color: var(--text-faint); text-align: center; padding: 8px 0; }
   
   .chart-grid { display: flex; flex-direction: column; gap: 12px; }
@@ -416,6 +417,13 @@
             <option value="312">312 小時（13天）</option>
             <option value="336">336 小時（14天）</option>
           </select>
+        </div>
+      </div>
+      
+      <div class="setup-row">
+        <div class="field">
+          <label>每月目標斷食次數</label>
+          <input type="number" id="monthlyGoal" placeholder="例：12" min="1" max="30" />
         </div>
       </div>
 
@@ -589,7 +597,7 @@ const STATE_KEY = 'fastTimerState_v1';
 const BIO_KEY = 'fastBiometrics_v2';
 const FASTING_HISTORY_KEY = 'fastingHistory_v1';
 
-let state = { running: false, startTime: null, goalHours: 120 };
+let state = { running: false, startTime: null, goalHours: 120, monthlyGoal: 12 };
 let bioRecords = [];
 let fastingHistory = [];
 
@@ -862,13 +870,17 @@ endBtn.addEventListener('click', () => {
     const endTime = Date.now();
     const durationMs = endTime - state.startTime;
     const durationHours = durationMs / 3600000;
+    
+    const noteText = prompt('添加本次斷食的筆記（選填）:', '');
+    
     fastingHistory.unshift({
       id: 'fast_' + endTime,
       startTime: state.startTime,
       endTime,
       durationMs,
       durationHours,
-      goalHours: Number(state.goalHours || goalSelect.value || 24)
+      goalHours: Number(state.goalHours || goalSelect.value || 24),
+      note: noteText || ''
     });
     saveFastingHistory();
     renderFastingHistory();
@@ -1242,6 +1254,18 @@ function renderFastingStats() {
   document.getElementById('maxFastLength').textContent = maxLength;
   document.getElementById('avgFastLength').textContent = avgLength;
   document.getElementById('totalFastTime').textContent = totalDays;
+  
+  const monthlyGoal = state.monthlyGoal || 12;
+  const goalProgress = Math.min(100, (monthCount / monthlyGoal) * 100);
+  document.getElementById('monthFastChange').textContent = `${monthCount}/${monthlyGoal} 次`;
+  
+  if (goalProgress >= 100) {
+    document.getElementById('monthFastChange').style.color = '#22c55e';
+  } else if (goalProgress >= 75) {
+    document.getElementById('monthFastChange').style.color = '#f59e0b';
+  } else {
+    document.getElementById('monthFastChange').style.color = 'var(--text-dim)';
+  }
 }
 
 function fmtDurationHours(ms) {
@@ -1285,6 +1309,13 @@ function renderFastingHistory() {
     meta.className = 'history-meta';
     meta.textContent = `目標 ${entry.goalHours} 小時 · ${entry.goalHours <= entry.durationHours ? '達成目標' : '未達目標'}`;
     item.appendChild(meta);
+    
+    if (entry.note) {
+      const noteEl = document.createElement('div');
+      noteEl.className = 'history-note';
+      noteEl.textContent = '📝 ' + entry.note;
+      item.appendChild(noteEl);
+    }
 
     historyList.appendChild(item);
   });
@@ -1313,6 +1344,22 @@ window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) updateDisplay(); });
 
+/* --------------- 鍵盤快捷鍵 --------------- */
+document.addEventListener('keydown', (e) => {
+  if (e.target === startInput || e.target === weightInput || e.target === hrInput || 
+      e.target === glucoseInput || e.target === sysInput || e.target === diaInput) return;
+  
+  if (e.code === 'Space') {
+    e.preventDefault();
+    if (state.running) endBtn.click();
+    else startBtn.click();
+  }
+  
+  if (e.code === 'Digit1') tabBtns[0]?.click();
+  if (e.code === 'Digit2') tabBtns[1]?.click();
+  if (e.code === 'Digit3') tabBtns[2]?.click();
+});
+
 /* ---------------- Service Worker ---------------- */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
@@ -1325,11 +1372,21 @@ loadState();
 applyTheme();
 goalSelect.value = String(state.goalHours || 120);
 startInput.value = toLocalDatetimeInputValue(state.startTime || Date.now());
+document.getElementById('monthlyGoal').value = String(state.monthlyGoal || 12);
 updateOnlineStatus();
 renderBioList();
 renderCharts();
 updateDisplay();
 tick();
+
+/* -------------- 月度目標監聽 -------------- */
+document.getElementById('monthlyGoal').addEventListener('change', () => {
+  const val = parseInt(document.getElementById('monthlyGoal').value) || 12;
+  state.monthlyGoal = Math.max(1, Math.min(30, val));
+  document.getElementById('monthlyGoal').value = String(state.monthlyGoal);
+  saveState();
+  renderFastingStats();
+});
 </script>
 </body>
 </html>

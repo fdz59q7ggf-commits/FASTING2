@@ -419,13 +419,6 @@
           </select>
         </div>
       </div>
-      
-      <div class="setup-row">
-        <div class="field">
-          <label>每月目標斷食次數</label>
-          <input type="number" id="monthlyGoal" placeholder="例：12" min="1" max="30" />
-        </div>
-      </div>
 
       <div class="preset-buttons">
         <button class="preset-btn" data-hours="16">16h</button>
@@ -515,11 +508,6 @@
       <div class="section-title">⏱️ 斷食統計</div>
       <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px;">
         <div class="stats-card">
-          <div class="stats-label">本月總數</div>
-          <div class="stats-value" id="monthFastCount">—</div>
-          <div class="stats-change" id="monthFastChange">次斷食</div>
-        </div>
-        <div class="stats-card">
           <div class="stats-label">最長紀錄</div>
           <div class="stats-value" id="maxFastLength">—</div>
           <div class="stats-change" id="maxFastUnit">小時</div>
@@ -597,7 +585,7 @@ const STATE_KEY = 'fastTimerState_v1';
 const BIO_KEY = 'fastBiometrics_v2';
 const FASTING_HISTORY_KEY = 'fastingHistory_v1';
 
-let state = { running: false, startTime: null, goalHours: 120, monthlyGoal: 12 };
+let state = { running: false, startTime: null, goalHours: 120 };
 let bioRecords = [];
 let fastingHistory = [];
 
@@ -1240,7 +1228,6 @@ function renderFastingStats() {
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthFasts = fastingHistory.filter(f => new Date(f.endTime) >= monthStart);
   
-  const monthCount = monthFasts.length;
   const maxLength = monthFasts.length > 0 
     ? Math.max(...monthFasts.map(f => f.durationHours)).toFixed(1) 
     : 0;
@@ -1250,22 +1237,9 @@ function renderFastingStats() {
   const totalMs = monthFasts.reduce((sum, f) => sum + f.durationMs, 0);
   const totalDays = (totalMs / (24 * 3600 * 1000)).toFixed(1);
   
-  document.getElementById('monthFastCount').textContent = monthCount;
   document.getElementById('maxFastLength').textContent = maxLength;
   document.getElementById('avgFastLength').textContent = avgLength;
   document.getElementById('totalFastTime').textContent = totalDays;
-  
-  const monthlyGoal = state.monthlyGoal || 12;
-  const goalProgress = Math.min(100, (monthCount / monthlyGoal) * 100);
-  document.getElementById('monthFastChange').textContent = `${monthCount}/${monthlyGoal} 次`;
-  
-  if (goalProgress >= 100) {
-    document.getElementById('monthFastChange').style.color = '#22c55e';
-  } else if (goalProgress >= 75) {
-    document.getElementById('monthFastChange').style.color = '#f59e0b';
-  } else {
-    document.getElementById('monthFastChange').style.color = 'var(--text-dim)';
-  }
 }
 
 function fmtDurationHours(ms) {
@@ -1372,21 +1346,11 @@ loadState();
 applyTheme();
 goalSelect.value = String(state.goalHours || 120);
 startInput.value = toLocalDatetimeInputValue(state.startTime || Date.now());
-document.getElementById('monthlyGoal').value = String(state.monthlyGoal || 12);
 updateOnlineStatus();
 renderBioList();
 renderCharts();
 updateDisplay();
 tick();
-
-/* -------------- 月度目標監聽 -------------- */
-document.getElementById('monthlyGoal').addEventListener('change', () => {
-  const val = parseInt(document.getElementById('monthlyGoal').value) || 12;
-  state.monthlyGoal = Math.max(1, Math.min(30, val));
-  document.getElementById('monthlyGoal').value = String(state.monthlyGoal);
-  saveState();
-  renderFastingStats();
-});
 </script>
 </body>
 </html>

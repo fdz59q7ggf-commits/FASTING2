@@ -8,21 +8,25 @@
 <meta name="theme-color" content="#0b1220" />
 <style>
   :root {
-    --bg: #0b1220;
-    --card: #121a2b;
-    --card-border: #223049;
-    --card-border-hover: #2dd4bf;
-    --text: #eef2f7;
-    --text-dim: #8b96a8;
-    --text-faint: #566178;
+    --bg: #edf6ff;
+    --bg-soft: #f4faff;
+    --bg-strong: #dfeeff;
+    --card: rgba(255, 255, 255, 0.88);
+    --card-strong: rgba(255, 255, 255, 0.96);
+    --card-border: rgba(110, 156, 214, 0.22);
+    --card-border-hover: rgba(96, 165, 250, 0.7);
+    --text: #17314d;
+    --text-dim: #5b738d;
+    --text-faint: #879bb2;
 
-    --teal: #2dd4bf;
-    --coral: #fb7185;
-    --amber: #f2b134;
-    --blue: #60a5fa;
-    --purple: #a78bfa;
-    --slate: #3a4459;
-    --danger: #ef4444;
+    --teal: #5ec9d7;
+    --teal-strong: #57b7f8;
+    --coral: #f58aa4;
+    --amber: #f0b867;
+    --blue: #7aaaf7;
+    --purple: #8ea4ff;
+    --slate: #dce9f8;
+    --danger: #ef5c75;
 
     --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
     --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
@@ -33,7 +37,10 @@
   * { box-sizing: border-box; }
   html, body {
     margin: 0; padding: 0;
-    background: #05070c;
+    background:
+      radial-gradient(circle at top, rgba(87, 183, 248, 0.24), transparent 30%),
+      radial-gradient(circle at bottom right, rgba(94, 201, 215, 0.18), transparent 28%),
+      linear-gradient(180deg, #edf7ff 0%, #eaf2ff 38%, #dfeeff 100%);
     color: var(--text);
     font-family: var(--sans);
     height: 100%;
@@ -43,14 +50,38 @@
   body {
     display: flex; align-items: center; justify-content: center;
   }
+  body.dark-mode {
+    background:
+      radial-gradient(circle at top, rgba(94, 234, 212, 0.16), transparent 26%),
+      radial-gradient(circle at bottom right, rgba(96, 165, 250, 0.14), transparent 28%),
+      linear-gradient(180deg, #07111c 0%, #050a14 40%, #040810 100%);
+  }
+  body.dark-mode #app {
+    background: linear-gradient(180deg, rgba(13, 27, 42, 0.95) 0%, rgba(9, 16, 25, 0.98) 100%);
+  }
+  body.dark-mode .card {
+    background: linear-gradient(180deg, rgba(18, 27, 41, 0.96), rgba(12, 18, 28, 0.9));
+    border-color: rgba(148,163,184,0.14);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04), 0 14px 20px rgba(2, 8, 15, 0.28);
+  }
+  body.dark-mode .card:hover {
+    border-color: rgba(45, 212, 191, 0.72);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 16px 30px rgba(45, 212, 191, 0.08);
+  }
+  body.dark-mode {
+    --text: #edf6ff;
+    --text-dim: #9bb3c9;
+    --text-faint: #7287a0;
+  }
   #app {
     width: 100%; max-width: 480px; margin: 0 auto;
     height: 100vh;
     height: 100svh;
-    background: var(--bg);
+    background: linear-gradient(180deg, rgba(255,255,255,0.78) 0%, rgba(241,248,255,0.94) 100%);
     display: flex; flex-direction: column;
     position: relative;
     overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7);
   }
   /* 桌機/較寬螢幕：呈現手機外框樣式，避免內容被拉伸到滿版 */
   @media (min-width: 620px) {
@@ -59,8 +90,8 @@
       max-height: 860px;
       margin: 20px auto;
       border-radius: 32px;
-      border: 1px solid var(--card-border);
-      box-shadow: 0 30px 80px rgba(0,0,0,0.55);
+      border: 1px solid rgba(145, 168, 205, 0.2);
+      box-shadow: 0 30px 80px rgba(2, 6, 13, 0.75), 0 0 0 1px rgba(94,234,212,0.08);
     }
   }
 
@@ -81,27 +112,30 @@
 
   /* ---------- shared ---------- */
   .card {
-    background: var(--card);
+    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(241,248,255,0.9));
     border: 1px solid var(--card-border);
-    border-radius: 16px;
+    border-radius: 18px;
     padding: 14px;
     margin-bottom: 10px;
     flex-shrink: 0;
     transition: var(--transition);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 14px 22px rgba(122, 170, 247, 0.08);
   }
   .card:hover {
     border-color: var(--card-border-hover);
-    box-shadow: 0 0 20px rgba(45, 212, 191, 0.15);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 16px 28px rgba(87, 183, 248, 0.12);
+    transform: translateY(-1px);
   }
   .page-title {
     font-size: 15px; font-weight: 800; text-align: center;
-    margin: 2px 0 10px; letter-spacing: 0.02em; flex-shrink: 0;
+    margin: 2px 0 10px; letter-spacing: 0.08em; text-transform: uppercase;
+    flex-shrink: 0; color: #f3fbff; text-shadow: 0 0 18px rgba(94,234,212,0.18);
   }
   .offline-badge {
     display: none; text-align: center; font-size: 10px; color: var(--text-dim);
-    background: var(--card); border: 1px solid var(--card-border); border-radius: 999px;
+    background: rgba(15, 23, 35, 0.9); border: 1px solid rgba(94,234,212,0.28); border-radius: 999px;
     padding: 3px 9px; width: fit-content; margin: 0 auto 8px; font-family: var(--mono);
-    flex-shrink: 0;
+    flex-shrink: 0; box-shadow: 0 0 18px rgba(94,234,212,0.10);
   }
   .offline-badge.show { display: block; }
 
@@ -117,36 +151,57 @@
   .setup-row { display: flex; gap: 8px; min-width: 0; }
   .field { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .field label { font-size: 10px; color: var(--text-dim); }
-  .field select, .field input {
-    font-family: var(--sans); font-size: 13px; padding: 7px 8px;
-    border-radius: 9px; border: 1px solid var(--card-border);
-    background: #0e1728; color: var(--text);
+
+  .preset-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin-bottom: 10px;
+  }
+  .preset-btn {
+    padding: 8px 6px;
+    background: rgba(122,170,247,0.08);
+    border: 1px solid rgba(122,170,247,0.18);
+    border-radius: 10px;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
     transition: var(--transition);
   }
-  .field select:focus, .field input:focus {
-    outline: none;
-    border-color: var(--teal);
-    box-shadow: 0 0 0 2px rgba(45, 212, 191, 0.2);
-    background: rgba(14, 23, 40, 0.8);
+  .preset-btn:hover {
+    background: rgba(122,170,247,0.14);
+    border-color: rgba(122,170,247,0.35);
+    color: var(--text);
   }
+  .preset-btn.active {
+    background: linear-gradient(135deg, #7aaaf7, #72d5ef);
+    border-color: rgba(122,170,247,0.5);
+    color: white;
+  }
+
 
   .ring-section {
     display: flex; flex-direction: column; align-items: center; justify-content: center;
     flex: 1; min-height: 0;
   }
-  .ring-wrap { position: relative; width: 248px; height: 248px; margin: 6px 0; max-width: 78vw; max-height: 78vw; }
+  .ring-wrap { position: relative; width: 272px; height: 272px; margin: 10px 0 8px; max-width: 78vw; max-height: 78vw; }
   .ring-bg {
     position: absolute; inset: 0; border-radius: 50%;
-    background: conic-gradient(var(--teal) calc(var(--pct, 0) * 1%), #1b2438 0);
+    background: conic-gradient(from 220deg, #7aaaf7 calc(var(--pct, 0) * 1%), rgba(122,170,247,0.18) 0, rgba(122,170,247,0.08) 66%, rgba(122,170,247,0.08) 100%);
+    box-shadow: 0 0 30px rgba(122,170,247,0.16), inset 0 0 20px rgba(255,255,255,0.28);
+    border: 1px solid rgba(122,170,247,0.16);
   }
   .ring-inner {
-    position: absolute; inset: 13px; border-radius: 50%;
-    background: var(--card);
+    position: absolute; inset: 18px; border-radius: 50%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(233,244,255,0.9));
     display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border: 1px solid rgba(122,170,247,0.12);
+    box-shadow: inset 0 0 18px rgba(122,170,247,0.08), 0 14px 28px rgba(122,170,247,0.12);
   }
-  .pct-text { font-size: 12px; color: var(--text-dim); margin-bottom: 3px; font-family: var(--mono); }
-  .elapsed-text { font-size: 31px; font-weight: 700; font-family: var(--mono); }
-  .goal-text { font-size: 11px; color: var(--text-faint); margin-top: 5px; font-family: var(--mono); }
+  .pct-text { font-size: 12px; color: var(--text-dim); margin-bottom: 6px; font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+  .elapsed-text { font-size: 31px; font-weight: 800; font-family: var(--mono); letter-spacing: 0.08em; color: var(--text); }
+  .goal-text { font-size: 11px; color: #2f5e99; background: rgba(122,170,247,0.10); border: 1px solid rgba(122,170,247,0.16); padding: 5px 8px; border-radius: 999px; margin-top: 8px; font-family: var(--mono); }
   .badge {
     position: absolute; width: 22px; height: 22px; border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
@@ -161,11 +216,11 @@
 
   .controls { display: flex; gap: 8px; margin-top: 4px; flex-shrink: 0; }
   button { font-family: var(--sans); border: none; cursor: pointer; border-radius: 12px; font-weight: 700; font-size: 14px; transition: var(--transition); }
-  .btn-primary { flex: 2; background: var(--teal); color: #04211c; padding: 11px; }
-  .btn-primary:hover { box-shadow: 0 4px 12px rgba(45, 212, 191, 0.3); transform: translateY(-1px); }
-  .btn-primary:active { opacity: 0.9; transform: translateY(0); }
-  .btn-secondary { flex: 1; background: #182337; border: 1px solid var(--card-border); color: var(--text); padding: 11px; transition: var(--transition); }
-  .btn-secondary:hover { border-color: var(--teal); background: rgba(45, 212, 191, 0.05); }
+  .btn-primary { flex: 2; background: linear-gradient(135deg, #7aaaf7 0%, #72d5ef 100%); color: #183156; padding: 11px; box-shadow: 0 10px 18px rgba(122, 170, 247, 0.22); }
+  .btn-primary:hover { box-shadow: 0 12px 24px rgba(122, 170, 247, 0.28); transform: translateY(-1px); }
+  .btn-primary:active { opacity: 0.95; transform: translateY(0); }
+  .btn-secondary { flex: 1; background: rgba(255,255,255,0.72); border: 1px solid rgba(122,170,247,0.18); color: var(--text); padding: 11px; transition: var(--transition); }
+  .btn-secondary:hover { border-color: rgba(122,170,247,0.7); background: rgba(122, 170, 247, 0.06); }
   .btn-secondary:active { opacity: 0.8; }
 
   .startend { display: flex; justify-content: space-between; font-size: 11px; margin-top: 8px; color: var(--text-faint); font-family: var(--mono); flex-shrink: 0; }
@@ -175,13 +230,54 @@
     display: flex; align-items: center; gap: 10px;
     border-left: 3px solid var(--coral);
     flex-shrink: 0;
+    background: linear-gradient(90deg, rgba(245,138,164,0.08), rgba(255,255,255,0.88));
   }
-  .phase-mini .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--coral); flex-shrink: 0; }
+  .phase-mini .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--coral); flex-shrink: 0; box-shadow: 0 0 14px rgba(245,138,164,0.4); }
   .phase-mini-body { min-width: 0; }
   .phase-mini-title { font-size: 13px; font-weight: 800; margin-bottom: 2px; }
   .phase-mini-desc {
     font-size: 11.5px; color: var(--text-dim); line-height: 1.5;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  .completion-celebration {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    z-index: 9999;
+    pointer-events: none;
+  }
+  .celebration-circle {
+    width: 100px; height: 100px; border-radius: 50%;
+    background: linear-gradient(135deg, #7aaaf7, #72d5ef);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 48px;
+    box-shadow: 0 0 40px rgba(122,170,247,0.5);
+    animation: celebrate-pop 0.6s ease-out forwards;
+  }
+  @keyframes celebrate-pop {
+    0% { transform: scale(0); opacity: 1; }
+    100% { transform: scale(1.2); opacity: 0; }
+  }
+
+  .theme-toggle {
+    position: absolute;
+    top: 14px; right: 16px;
+    background: rgba(122,170,247,0.08);
+    border: 1px solid rgba(122,170,247,0.18);
+    border-radius: 999px;
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    transition: var(--transition);
+    z-index: 100;
+  }
+  .theme-toggle:hover {
+    background: rgba(122,170,247,0.14);
+    border-color: rgba(122,170,247,0.35);
+  }
+  .theme-toggle.active {
+    background: linear-gradient(135deg, rgba(122,170,247,0.2), rgba(114,213,239,0.2));
+    border-color: rgba(122,170,247,0.35);
   }
 
   /* ================= INPUT VIEW ================= */
@@ -200,12 +296,13 @@
   .bio-list { display: flex; flex-direction: column; gap: 8px; }
   .bio-item {
     display: flex; align-items: center; justify-content: space-between;
-    background: #0e1728; border: 1px solid var(--card-border); border-radius: 12px;
+    background: linear-gradient(180deg, rgba(16, 24, 35, 0.9), rgba(11, 16, 23, 0.92));
+    border: 1px solid var(--card-border); border-radius: 12px;
     padding: 8px 10px; font-size: 13px;
     transition: var(--transition);
   }
   .bio-item:hover {
-    border-color: var(--teal);
+    border-color: rgba(94,234,212,0.7);
     box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1);
   }
   .bio-item .bio-time { color: var(--text-faint); font-size: 10px; font-family: var(--mono); }
@@ -219,7 +316,7 @@
 
   /* ================= CHART VIEW ================= */
   .stats-summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 12px; }
-  .stats-card { background: #0e1728; border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; transition: var(--transition); }
+  .stats-card { background: linear-gradient(180deg, rgba(14, 23, 40, 0.95), rgba(10, 16, 24, 0.92)); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; transition: var(--transition); }
   .stats-card:hover { border-color: var(--card-border-hover); box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1); }
   .stats-label { font-size: 11px; color: var(--text-dim); font-weight: 700; margin-bottom: 4px; }
   .stats-value { font-size: 18px; font-weight: 700; font-family: var(--mono); color: var(--teal); margin-bottom: 4px; }
@@ -240,7 +337,7 @@
   .history-empty { font-size: 12px; color: var(--text-faint); text-align: center; padding: 8px 0; }
   
   .chart-grid { display: flex; flex-direction: column; gap: 12px; }
-  .chart-card { background: #0e1728; border: 1px solid var(--card-border); border-radius: 14px; padding: 12px 14px; flex-shrink: 0; transition: var(--transition); }
+  .chart-card { background: linear-gradient(180deg, rgba(12, 20, 31, 0.95), rgba(9, 14, 21, 0.95)); border: 1px solid var(--card-border); border-radius: 14px; padding: 12px 14px; flex-shrink: 0; transition: var(--transition); }
   .chart-card:hover { border-color: var(--card-border-hover); box-shadow: 0 2px 8px rgba(45, 212, 191, 0.1); }
   .chart-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
   .chart-label { font-size: 12px; color: var(--text-dim); font-weight: 700; }
@@ -256,23 +353,31 @@
   .tab-bar {
     position: absolute; left: 0; right: 0; bottom: 0;
     height: var(--nav-h);
-    background: rgba(18, 26, 43, 0.92);
-    backdrop-filter: blur(10px);
-    border-top: 1px solid var(--card-border);
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(12px);
+    border-top: 1px solid rgba(122,170,247,0.18);
     display: flex;
+    padding: 6px 10px 0;
+    gap: 6px;
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
   .tab-btn {
-    flex: 1; background: transparent; border: none; cursor: pointer;
+    flex: 1; background: transparent; border: 1px solid transparent; cursor: pointer;
     display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
     color: var(--text-faint); font-size: 10.5px; font-weight: 700; font-family: var(--sans);
     padding: 6px 0 0;
     transition: var(--transition);
+    border-radius: 12px;
   }
-  .tab-btn:hover { color: var(--text-dim); }
+  .tab-btn:hover { color: var(--text-dim); background: rgba(122,170,247,0.04); }
   .tab-btn .tab-icon { font-size: 19px; line-height: 1; transition: var(--transition); }
-  .tab-btn.active { color: var(--teal); }
-  .tab-btn.active .tab-icon { filter: drop-shadow(0 0 6px rgba(45,212,191,0.5)); transform: scale(1.1); }
+  .tab-btn.active {
+    color: #2d5fa5;
+    background: linear-gradient(180deg, rgba(122,170,247,0.12), rgba(255,255,255,0.8));
+    border-color: rgba(122,170,247,0.28);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.7), 0 0 16px rgba(122,170,247,0.08);
+  }
+  .tab-btn.active .tab-icon { filter: drop-shadow(0 0 6px rgba(122,170,247,0.3)); transform: scale(1.1); }
 </style>
 </head>
 <body>
@@ -281,6 +386,7 @@
   <!-- ===================== HOME VIEW ===================== -->
   <div class="view active" id="home-view">
     <div class="offline-badge" id="offlineBadge">OFFLINE · 持續計時中</div>
+    <button class="theme-toggle" id="themeToggle" title="切換深色/淺色模式">🌙</button>
 
     <div class="card home-main-card">
       <div class="setup-row">
@@ -311,6 +417,13 @@
             <option value="336">336 小時（14天）</option>
           </select>
         </div>
+      </div>
+
+      <div class="preset-buttons">
+        <button class="preset-btn" data-hours="16">16h</button>
+        <button class="preset-btn" data-hours="18">18h</button>
+        <button class="preset-btn" data-hours="20">20h</button>
+        <button class="preset-btn" data-hours="24">24h</button>
       </div>
 
       <div class="ring-section">
@@ -390,9 +503,34 @@
   <!-- ===================== CHART VIEW ===================== -->
   <div class="view" id="chart-view">
     <div class="page-title" style="flex-shrink:0;">📈 趨勢統計</div>
+    <div class="card" style="flex-shrink:0;">
+      <div class="section-title">⏱️ 斷食統計</div>
+      <div style="display:grid; grid-template-columns:repeat(2,1fr); gap:10px;">
+        <div class="stats-card">
+          <div class="stats-label">本月總數</div>
+          <div class="stats-value" id="monthFastCount">—</div>
+          <div class="stats-change" id="monthFastChange">次斷食</div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-label">最長紀錄</div>
+          <div class="stats-value" id="maxFastLength">—</div>
+          <div class="stats-change" id="maxFastUnit">小時</div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-label">平均時長</div>
+          <div class="stats-value" id="avgFastLength">—</div>
+          <div class="stats-change" id="avgFastUnit">小時</div>
+        </div>
+        <div class="stats-card">
+          <div class="stats-label">總斷食時間</div>
+          <div class="stats-value" id="totalFastTime">—</div>
+          <div class="stats-change" id="totalFastUnit">天</div>
+        </div>
+      </div>
+    </div>
     <div class="stats-summary" id="statsSummary" style="flex-shrink:0;"></div>
     <div class="card history-card" style="flex-shrink:0;">
-      <div class="section-title" style="margin-bottom:8px;">⏱️ 斷食歷史紀錄</div>
+      <div class="section-title" style="margin-bottom:8px;">📋 斷食歷史紀錄</div>
       <div class="history-list" id="historyList"></div>
     </div>
     <div class="chart-grid scroll-region" id="chartGrid"></div>
@@ -659,9 +797,35 @@ function checkMilestoneNotify(elapsedHours) {
   MILESTONES.forEach((m) => {
     if (elapsedHours >= m && !notifiedMilestones[m]) {
       notifiedMilestones[m] = true;
-      notify(`已達成 ${m} 小時！${getPhase(m).title}`);
+      notify(`✅ 已達成 ${m} 小時！${getPhase(m).title}`);
+      showCelebration();
+      playSound();
     }
   });
+}
+
+function showCelebration() {
+  const celebration = document.createElement('div');
+  celebration.className = 'completion-celebration';
+  const circle = document.createElement('div');
+  circle.className = 'celebration-circle';
+  circle.textContent = '🎉';
+  celebration.appendChild(circle);
+  document.body.appendChild(celebration);
+  setTimeout(() => celebration.remove(), 700);
+}
+
+function playSound() {
+  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  const oscillator = audioContext.createOscillator();
+  const gainNode = audioContext.createGain();
+  oscillator.connect(gainNode);
+  gainNode.connect(audioContext.destination);
+  oscillator.frequency.value = 800;
+  gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+  oscillator.start(audioContext.currentTime);
+  oscillator.stop(audioContext.currentTime + 0.3);
 }
 
 let lastStartFieldRefreshSec = -1;
@@ -799,10 +963,35 @@ bioAddBtn.addEventListener('click', () => {
   diaInput.value = '';
 });
 
-/* ---------- 清空數據（帶安全確認）---------- */
-exportDataBtn.addEventListener('click', () => {
-  exportCurrentData();
+/* ---------- 黑暗模式與快速預設 ---------- */
+const themeToggle = document.getElementById('themeToggle');
+const presetBtns = document.querySelectorAll('.preset-btn');
+const THEME_KEY = 'fastTimerTheme_v1';
+let isDarkMode = localStorage.getItem(THEME_KEY) === 'dark';
+
+function applyTheme() {
+  document.body.classList.toggle('dark-mode', isDarkMode);
+  themeToggle.textContent = isDarkMode ? '☀️' : '🌙';
+  themeToggle.classList.toggle('active', isDarkMode);
+  localStorage.setItem(THEME_KEY, isDarkMode ? 'dark' : 'light');
+}
+
+themeToggle.addEventListener('click', () => {
+  isDarkMode = !isDarkMode;
+  applyTheme();
 });
+
+presetBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const hours = btn.getAttribute('data-hours');
+    goalSelect.value = hours;
+    state.goalHours = Number(hours);
+    saveState();
+    updateDisplay();
+    presetBtns.forEach(b => b.classList.toggle('active', b === btn));
+  });
+});
+
 
 importDataBtn.addEventListener('click', () => {
   importFileInput.click();
@@ -1030,6 +1219,29 @@ function renderStatsSummary() {
     
     statsSummary.appendChild(bpCard);
   }
+  
+  renderFastingStats();
+}
+
+function renderFastingStats() {
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthFasts = fastingHistory.filter(f => new Date(f.endTime) >= monthStart);
+  
+  const monthCount = monthFasts.length;
+  const maxLength = monthFasts.length > 0 
+    ? Math.max(...monthFasts.map(f => f.durationHours)).toFixed(1) 
+    : 0;
+  const avgLength = monthFasts.length > 0 
+    ? (monthFasts.reduce((sum, f) => sum + f.durationHours, 0) / monthFasts.length).toFixed(1) 
+    : 0;
+  const totalMs = monthFasts.reduce((sum, f) => sum + f.durationMs, 0);
+  const totalDays = (totalMs / (24 * 3600 * 1000)).toFixed(1);
+  
+  document.getElementById('monthFastCount').textContent = monthCount;
+  document.getElementById('maxFastLength').textContent = maxLength;
+  document.getElementById('avgFastLength').textContent = avgLength;
+  document.getElementById('totalFastTime').textContent = totalDays;
 }
 
 function fmtDurationHours(ms) {
@@ -1110,6 +1322,7 @@ if ('serviceWorker' in navigator) {
 
 /* ---------------- 初始化 ---------------- */
 loadState();
+applyTheme();
 goalSelect.value = String(state.goalHours || 120);
 startInput.value = toLocalDatetimeInputValue(state.startTime || Date.now());
 updateOnlineStatus();

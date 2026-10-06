@@ -310,6 +310,16 @@
   .history-actions { display: flex; gap: 8px; margin-top: 6px; }
   .history-actions button { background: transparent; border: 1px solid var(--card-border); color: var(--text-dim); border-radius: 8px; padding: 3px 10px; font-size: 11px; cursor: pointer; }
 
+  .settings-row { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+  .settings-row select { font-size: 11px; padding: 3px 6px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card-strong); color: var(--text); }
+  .settings-row button { font-size: 11px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--card-border); background: transparent; color: var(--text-dim); cursor: pointer; }
+  .settings-row [hidden] { display: none; }
+  .range-row { display: flex; gap: 6px; flex-shrink: 0; margin-bottom: 8px; }
+  .range-row button { flex: 1; padding: 5px 0; font-size: 12px; font-weight: 700; border-radius: 10px; border: 1px solid var(--card-border); background: transparent; color: var(--text-dim); cursor: pointer; }
+  .range-row button.active { background: rgba(122,170,247,0.18); color: var(--text); border-color: rgba(122,170,247,0.5); }
+  .chart-foot { font-size: 10px; color: var(--text-faint); font-family: var(--mono); margin-top: 4px; }
+  .toast { position: fixed; left: 50%; bottom: 90px; transform: translateX(-50%); background: rgba(23,49,77,0.94); color: #fff; padding: 10px 16px; border-radius: 12px; font-size: 13px; z-index: 300; max-width: 86vw; text-align: center; }
+
   /* ================= INPUT VIEW ================= */
   .section-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
   .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--coral); animation: pulse-beat 1.1s ease-in-out infinite; }
@@ -458,6 +468,7 @@
         <button class="preset-btn" data-hours="18">18h</button>
         <button class="preset-btn" data-hours="20">20h</button>
         <button class="preset-btn" data-hours="24">24h</button>
+        <button class="preset-btn custom-goal" id="customGoalBtn">自訂</button>
       </div>
 
       <div class="ring-section">
@@ -498,7 +509,7 @@
       <div class="section-title"><span class="pulse-dot"></span> 體重 / 心跳 / 血糖 / 血壓</div>
       <div class="bio-form">
         <div class="field">
-          <label>體重 (kg)</label>
+          <label id="weightLabel">體重 (kg)</label>
           <input type="number" step="0.1" id="weightInput" placeholder="65.5" />
         </div>
         <div class="field">
@@ -506,7 +517,7 @@
           <input type="number" step="1" id="hrInput" placeholder="72" />
         </div>
         <div class="field">
-          <label>血糖 (mg/dL)</label>
+          <label id="glucoseLabel">血糖 (mg/dL)</label>
           <input type="number" step="1" id="glucoseInput" placeholder="95" />
         </div>
         <div class="field" style="display:flex; flex-direction:row; gap:6px; min-width:0;">
@@ -520,6 +531,12 @@
           </div>
         </div>
         <button class="bio-add-btn" id="bioAddBtn">＋ 新增記錄</button>
+      </div>
+      <div class="settings-row">
+        <label>血糖 <select id="glucoseUnitSel"><option value="mgdl">mg/dL</option><option value="mmol">mmol/L</option></select></label>
+        <label>體重 <select id="weightUnitSel"><option value="kg">kg</option><option value="lb">lb</option></select></label>
+        <label>💧 喝水提醒 <select id="hydrateSel"><option value="0">關閉</option><option value="60">每 1 小時</option><option value="120">每 2 小時</option><option value="180">每 3 小時</option></select></label>
+        <button id="installBtn" hidden>📲 安裝成 App</button>
       </div>
     </div>
     <div class="card" style="flex:1; min-height:0; display:flex; flex-direction:column; overflow:hidden;">
@@ -562,6 +579,9 @@
     <div class="card history-card" style="flex-shrink:0;">
       <div class="section-title" style="margin-bottom:8px;">📋 斷食歷史紀錄</div>
       <div class="history-list" id="historyList"></div>
+    </div>
+    <div class="range-row" id="rangeRow">
+      <button data-range="7">7 天</button><button data-range="30">30 天</button><button data-range="0" class="active">全部</button>
     </div>
     <div class="chart-grid scroll-region" id="chartGrid"></div>
     <div class="disclaimer" style="flex-shrink:0;">
@@ -798,6 +818,53 @@ const bioList = document.getElementById('bioList');
 const historyList = document.getElementById('historyList');
 const chartGrid = document.getElementById('chartGrid');
 
+/* ---------------- 設定與單位 ---------------- */
+const SETTINGS_KEY = 'fastSettings_v1';
+const G_FACTOR = 18.0182, LB_FACTOR = 2.20462;
+let settings = { glucoseUnit: 'mgdl', weightUnit: 'kg', hydrateMin: 0 };
+function loadSettings() {
+  try {
+    const o = JSON.parse(lsGet(SETTINGS_KEY) || '{}');
+    if (o.glucoseUnit === 'mmol') settings.glucoseUnit = 'mmol';
+    if (o.weightUnit === 'lb') settings.weightUnit = 'lb';
+    if ([0, 60, 120, 180].includes(Number(o.hydrateMin))) settings.hydrateMin = Number(o.hydrateMin);
+  } catch (e) {}
+}
+function saveSettings() { lsSet(SETTINGS_KEY, JSON.stringify(settings)); }
+function dispVal(key, v) {
+  if (v == null) return v;
+  if (key === 'glucose' && settings.glucoseUnit === 'mmol') return +(v / G_FACTOR).toFixed(1);
+  if (key === 'weight' && settings.weightUnit === 'lb') return +(v * LB_FACTOR).toFixed(1);
+  return v;
+}
+function canonVal(key, v) {
+  if (isNaN(v)) return v;
+  if (key === 'glucose' && settings.glucoseUnit === 'mmol') return Math.round(v * G_FACTOR);
+  if (key === 'weight' && settings.weightUnit === 'lb') return +(v / LB_FACTOR).toFixed(1);
+  return v;
+}
+function unitLabel(key) {
+  if (key === 'glucose') return settings.glucoseUnit === 'mmol' ? 'mmol/L' : 'mg/dL';
+  if (key === 'weight') return settings.weightUnit === 'lb' ? 'lb' : 'kg';
+  return '';
+}
+function applyUnits() {
+  document.getElementById('weightLabel').textContent = '體重 (' + unitLabel('weight') + ')';
+  document.getElementById('glucoseLabel').textContent = '血糖 (' + unitLabel('glucose') + ')';
+  weightInput.placeholder = settings.weightUnit === 'lb' ? '144' : '65.5';
+  glucoseInput.placeholder = settings.glucoseUnit === 'mmol' ? '5.3' : '95';
+  glucoseInput.step = settings.glucoseUnit === 'mmol' ? '0.1' : '1';
+  document.getElementById('glucoseUnitSel').value = settings.glucoseUnit;
+  document.getElementById('weightUnitSel').value = settings.weightUnit;
+  document.getElementById('hydrateSel').value = String(settings.hydrateMin);
+}
+function showToast(text) {
+  const t = document.createElement('div');
+  t.className = 'toast'; t.textContent = text;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 5000);
+}
+
 /* ---------------- 工具 ---------------- */
 function toLocalDatetimeInputValue(ms) {
   const d = new Date(ms);
@@ -956,8 +1023,20 @@ function playSound() {
 }
 
 let lastStartFieldRefreshSec = -1;
+const HYDRATE_MSG = '💧 該喝水了！長時間斷食請適量補充水分與電解質（鈉、鉀、鎂）';
+function checkHydrate() {
+  if (!state.running || !settings.hydrateMin) return;
+  const last = state.lastHydrate || state.startTime;
+  if (Date.now() - last >= settings.hydrateMin * 60000) {
+    state.lastHydrate = Date.now();
+    saveState();
+    notify(HYDRATE_MSG);
+    showToast(HYDRATE_MSG);
+  }
+}
 function tick() {
   updateDisplay();
+  checkHydrate();
   const nowSec = Math.floor(Date.now() / 1000);
   if (!state.running && !startInputManuallyEdited && document.activeElement !== startInput && nowSec !== lastStartFieldRefreshSec) {
     lastStartFieldRefreshSec = nowSec;
@@ -992,6 +1071,7 @@ startBtn.addEventListener('click', () => {
   state.goalHours = Number(goalSelect.value) || 24;
   state.notified = {};
   state.goalNotified = false;
+  state.lastHydrate = null;
   lastBadgeKey = '';
   startInputManuallyEdited = false;
   requestWakeLock();
@@ -1028,11 +1108,20 @@ endBtn.addEventListener('click', () => {
     releaseWakeLock();
     saveState();
     updateDisplay();
+    if (durationHours >= 24) {
+      alert(durationHours >= 48
+        ? '🍽️ 復食提醒（斷食 ≥ 48 小時）\n\n• 先喝水、清湯或少量電解質飲品\n• 第一餐份量小、易消化（如粥、蒸蛋、煮熟蔬菜），慢慢吃\n• 避免大量精緻碳水、油炸與酒精\n• 少量多餐，1–3 天內逐步恢復正常飲食\n• 長時間斷食後有「再餵食症候群」風險（低磷、低鉀、低鎂），建議由醫療人員指導\n• 若出現心悸、水腫、呼吸困難、極度虛弱，請立即就醫'
+        : '🍽️ 復食提醒\n\n先喝水，第一餐吃少量、好消化的食物，避免一次吃太多或太油膩。');
+    }
   }
 });
 
+function onGoalChanged() {
+  if (state.running && state.startTime && (Date.now() - state.startTime) / 3600000 < state.goalHours) state.goalNotified = false;
+}
 goalSelect.addEventListener('change', () => {
   state.goalHours = Number(goalSelect.value);
+  onGoalChanged();
   saveState();
   updateDisplay();
 });
@@ -1069,9 +1158,9 @@ function renderBioList() {
     const valsDiv = document.createElement('div');
     valsDiv.className = 'bio-vals';
     const parts = [];
-    if (rec.weight) parts.push('⚖ ' + rec.weight + 'kg');
+    if (rec.weight) parts.push('⚖ ' + dispVal('weight', rec.weight) + unitLabel('weight'));
     if (rec.hr) parts.push('♥ ' + rec.hr + 'bpm');
-    if (rec.glucose) parts.push('◆ ' + rec.glucose + 'mg/dL');
+    if (rec.glucose) parts.push('◆ ' + dispVal('glucose', rec.glucose) + unitLabel('glucose'));
     if (rec.sys && rec.dia) parts.push('▲ ' + rec.sys + '/' + rec.dia);
     valsDiv.textContent = parts.join('   ') || '（無數值）';
     left.appendChild(valsDiv);
@@ -1098,9 +1187,9 @@ function renderBioList() {
 
 bioAddBtn.addEventListener('click', () => {
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
-  const weight = parseFloat(weightInput.value);
+  const weight = canonVal('weight', parseFloat(weightInput.value));
   const hr = parseFloat(hrInput.value);
-  const glucose = parseFloat(glucoseInput.value);
+  const glucose = canonVal('glucose', parseFloat(glucoseInput.value));
   const sys = parseFloat(sysInput.value);
   const dia = parseFloat(diaInput.value);
 
@@ -1140,9 +1229,9 @@ bioAddBtn.addEventListener('click', () => {
 
 /* ---------- 黑暗模式與快速預設 ---------- */
 const themeToggle = document.getElementById('themeToggle');
-const presetBtns = document.querySelectorAll('.preset-btn');
+const presetBtns = document.querySelectorAll('.preset-btn[data-hours]');
 const THEME_KEY = 'fastTimerTheme_v1';
-let isDarkMode = lsGet(THEME_KEY) === 'dark';
+let isDarkMode = lsGet(THEME_KEY) ? lsGet(THEME_KEY) === 'dark' : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
 
 function applyTheme() {
   document.body.classList.toggle('dark-mode', isDarkMode);
@@ -1161,6 +1250,7 @@ presetBtns.forEach(btn => {
     const hours = btn.getAttribute('data-hours');
     goalSelect.value = hours;
     state.goalHours = Number(hours);
+    onGoalChanged();
     saveState();
     updateDisplay();
     presetBtns.forEach(b => b.classList.toggle('active', b === btn));
@@ -1170,6 +1260,35 @@ presetBtns.forEach(btn => {
 
 exportDataBtn.addEventListener('click', exportCurrentData);
 exportCsvBtn.addEventListener('click', exportCsv);
+document.getElementById('customGoalBtn').addEventListener('click', () => {
+  const v = prompt('自訂目標時數（1–720 小時）：', String(state.goalHours || 24));
+  if (v === null) return;
+  const h = Math.round(Number(v));
+  if (!isFinite(h) || h < 1 || h > 720) { alert('請輸入 1–720 之間的小時數'); return; }
+  setGoalSelect(h);
+  state.goalHours = h;
+  onGoalChanged();
+  saveState();
+  updateDisplay();
+});
+document.getElementById('glucoseUnitSel').addEventListener('change', (e) => { settings.glucoseUnit = e.target.value; saveSettings(); applyUnits(); renderBioList(); renderCharts(); });
+document.getElementById('weightUnitSel').addEventListener('change', (e) => { settings.weightUnit = e.target.value; saveSettings(); applyUnits(); renderBioList(); renderCharts(); });
+document.getElementById('hydrateSel').addEventListener('change', (e) => { settings.hydrateMin = Number(e.target.value); saveSettings(); state.lastHydrate = Date.now(); saveState(); });
+document.querySelectorAll('#rangeRow button').forEach(b => b.addEventListener('click', () => {
+  chartRange = Number(b.dataset.range);
+  document.querySelectorAll('#rangeRow button').forEach(x => x.classList.toggle('active', x === b));
+  renderCharts();
+}));
+let deferredInstall = null;
+const installBtn = document.getElementById('installBtn');
+window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredInstall = e; installBtn.hidden = false; });
+installBtn.addEventListener('click', async () => {
+  if (!deferredInstall) return;
+  deferredInstall.prompt();
+  try { await deferredInstall.userChoice; } catch (e) {}
+  deferredInstall = null; installBtn.hidden = true;
+});
+window.addEventListener('appinstalled', () => { installBtn.hidden = true; });
 importDataBtn.addEventListener('click', () => {
   importFileInput.click();
 });
@@ -1197,7 +1316,9 @@ clearDataBtn.addEventListener('click', () => {
 /* ---------------- 趨勢圖表 ---------------- */
 const CHART_W = 300;
 const CHART_H = 60;
-const MAX_POINTS = 20;
+const MAX_POINTS = 60;
+let chartRange = 0;
+const inRange = (r) => chartRange === 0 || r.time >= Date.now() - chartRange * 86400000;
 
 function buildPolyline(values, w, h, min, max) {
   if (values.length === 0) return '';
@@ -1230,7 +1351,7 @@ function makeSparklineSVG(seriesList) {
 }
 
 function buildChartCard(label, unit, records, valueKey, color, latestFormatter) {
-  const filtered = records.filter(r => r[valueKey] != null).sort((a, b) => a.time - b.time).slice(-MAX_POINTS);
+  const filtered = records.filter(r => r[valueKey] != null && inRange(r)).sort((a, b) => a.time - b.time).slice(-MAX_POINTS);
   const card = document.createElement('div');
   card.className = 'chart-card';
 
@@ -1265,12 +1386,17 @@ function buildChartCard(label, unit, records, valueKey, color, latestFormatter) 
   const wrap = document.createElement('div');
   wrap.innerHTML = svgHtml;
   card.appendChild(wrap.firstChild);
+  const vals = filtered.map(r => dispVal(valueKey, r[valueKey]));
+  const foot = document.createElement('div');
+  foot.className = 'chart-foot';
+  foot.textContent = `${fmtDateShort(filtered[0].time)} → ${fmtDateShort(filtered[filtered.length - 1].time)} · 低 ${Math.min(...vals)} 高 ${Math.max(...vals)}`;
+  card.appendChild(foot);
 
   return card;
 }
 
 function buildBpChartCard(records) {
-  const filtered = records.filter(r => r.sys != null && r.dia != null).sort((a, b) => a.time - b.time).slice(-MAX_POINTS);
+  const filtered = records.filter(r => r.sys != null && r.dia != null && inRange(r)).sort((a, b) => a.time - b.time).slice(-MAX_POINTS);
   const card = document.createElement('div');
   card.className = 'chart-card';
 
@@ -1313,6 +1439,10 @@ function buildBpChartCard(records) {
   legend.className = 'chart-legend';
   legend.innerHTML = `<span><span class="legend-dot" style="background:#f2b134"></span>收縮壓</span><span><span class="legend-dot" style="background:#2dd4bf"></span>舒張壓</span>`;
   card.appendChild(legend);
+  const foot = document.createElement('div');
+  foot.className = 'chart-foot';
+  foot.textContent = `${fmtDateShort(filtered[0].time)} → ${fmtDateShort(filtered[filtered.length - 1].time)} · 收縮壓 ${Math.min(...filtered.map(r => r.sys))}–${Math.max(...filtered.map(r => r.sys))}`;
+  card.appendChild(foot);
 
   return card;
 }
@@ -1332,7 +1462,7 @@ function buildStatsCard(label, unit, records, valueKey, icon) {
     return card;
   }
   
-  const values = filtered.map(r => r[valueKey]);
+  const values = filtered.map(r => dispVal(valueKey, r[valueKey]));
   const avg = (values.reduce((a, b) => a + b, 0) / values.length).toFixed(1);
   const max = Math.max(...values).toFixed(1);
   const min = Math.min(...values).toFixed(1);
@@ -1366,9 +1496,9 @@ function renderStatsSummary() {
   renderFastingStats();
   if (bioRecords.length === 0) return;
   
-  statsSummary.appendChild(buildStatsCard('體重', 'kg', bioRecords, 'weight', '⚖'));
+  statsSummary.appendChild(buildStatsCard('體重', unitLabel('weight'), bioRecords, 'weight', '⚖'));
   statsSummary.appendChild(buildStatsCard('心率', 'bpm', bioRecords, 'hr', '♥'));
-  statsSummary.appendChild(buildStatsCard('血糖', 'mg/dL', bioRecords, 'glucose', '◆'));
+  statsSummary.appendChild(buildStatsCard('血糖', unitLabel('glucose'), bioRecords, 'glucose', '◆'));
   
   const bpFiltered = bioRecords.filter(r => r.sys != null && r.dia != null).sort((a, b) => a.time - b.time);
   if (bpFiltered.length > 0) {
@@ -1500,9 +1630,9 @@ function renderCharts() {
     chartGrid.appendChild(empty);
     return;
   }
-  chartGrid.appendChild(buildChartCard('體重', 'kg', bioRecords, 'weight', '#60a5fa', r => r.weight));
+  chartGrid.appendChild(buildChartCard('體重', unitLabel('weight'), bioRecords, 'weight', '#60a5fa', r => dispVal('weight', r.weight)));
   chartGrid.appendChild(buildChartCard('心跳', 'bpm', bioRecords, 'hr', '#fb7185', r => r.hr));
-  chartGrid.appendChild(buildChartCard('血糖', 'mg/dL', bioRecords, 'glucose', '#a78bfa', r => r.glucose));
+  chartGrid.appendChild(buildChartCard('血糖', unitLabel('glucose'), bioRecords, 'glucose', '#a78bfa', r => dispVal('glucose', r.glucose)));
   chartGrid.appendChild(buildBpChartCard(bioRecords));
 }
 
@@ -1578,6 +1708,8 @@ if ('serviceWorker' in navigator) {
 
 /* ---------------- 初始化 ---------------- */
 loadState();
+loadSettings();
+applyUnits();
 applyTheme();
 // 顯示同意對話（若尚未同意）
 nosaveBanner.hidden = consented;

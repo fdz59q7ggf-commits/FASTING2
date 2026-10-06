@@ -6,6 +6,9 @@
 <title>斷食計時器</title>
 <link rel="manifest" href="manifest.json" />
 <meta name="theme-color" content="#0b1220" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="apple-touch-icon" href="icon-180.png" />
 <style>
   :root {
     --bg: #edf6ff;
@@ -301,6 +304,12 @@
     border-color: rgba(122,170,247,0.35);
   }
 
+  .nosave-banner { background: rgba(239,68,68,0.12); border: 1px solid var(--danger); color: var(--danger); border-radius: 10px; padding: 8px 12px; font-size: 12px; font-weight: 700; margin: 0 0 10px; }
+  .nosave-banner[hidden] { display: none; }
+  .bio-warn { color: var(--danger); font-size: 11px; font-weight: 700; margin-top: 2px; }
+  .history-actions { display: flex; gap: 8px; margin-top: 6px; }
+  .history-actions button { background: transparent; border: 1px solid var(--card-border); color: var(--text-dim); border-radius: 8px; padding: 3px 10px; font-size: 11px; cursor: pointer; }
+
   /* ================= INPUT VIEW ================= */
   .section-title { font-size: 14px; font-weight: 700; margin-bottom: 12px; display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
   .pulse-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--coral); animation: pulse-beat 1.1s ease-in-out infinite; }
@@ -408,9 +417,10 @@
   <!-- ===================== HOME VIEW ===================== -->
   <div class="view active" id="home-view">
     <div class="offline-badge" id="offlineBadge">OFFLINE · 持續計時中</div>
-    <button class="theme-toggle" id="themeToggle" title="切換深色/淺色模式">🌙</button>
-    <button class="privacy-btn" id="privacyBtn" title="隱私與資料">🔒</button>
-    <button class="clear-data-btn" id="clearDataBtn" title="刪除本機資料">🗑️</button>
+    <div class="nosave-banner" id="nosaveBanner" hidden>⚠️ 未同意隱私說明：目前資料不會儲存，重新整理後將消失</div>
+    <button class="theme-toggle" id="themeToggle" title="切換深色/淺色模式" aria-label="切換深色或淺色模式">🌙</button>
+    <button class="privacy-btn" id="privacyBtn" title="隱私與資料" aria-label="隱私與資料">🔒</button>
+    <button class="clear-data-btn" id="wipeDataBtn" title="刪除本機資料" aria-label="刪除本機資料">🗑️</button>
 
     <div class="card home-main-card">
       <div class="setup-row">
@@ -451,7 +461,7 @@
       </div>
 
       <div class="ring-section">
-        <div class="ring-wrap" id="ringWrap">
+        <div class="ring-wrap" id="ringWrap" role="progressbar" aria-label="斷食進度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
           <div class="ring-bg" id="ringBg"></div>
           <div class="ring-inner">
             <div class="pct-text" id="pctText">已過時間 0%</div>
@@ -518,6 +528,7 @@
       <div style="display:flex; gap:8px; margin-top:8px; flex-shrink:0;">
         <button class="btn-secondary" id="exportDataBtn" style="flex:1; padding:10px 12px;">📤 匯出資料</button>
         <button class="btn-secondary" id="importDataBtn" style="flex:1; padding:10px 12px;">📥 匯入資料</button>
+        <button class="btn-secondary" id="exportCsvBtn" style="flex:1; padding:10px 12px;">📄 CSV</button>
       </div>
       <button class="btn-clear-data" id="clearDataBtn" style="margin-top:8px; flex-shrink:0;">🗑️ 清空所有數據</button>
       <input type="file" id="importFileInput" accept="application/json,.json" hidden />
@@ -608,7 +619,7 @@ const STATE_KEY = 'fastTimerState_v1';
 const BIO_KEY = 'fastBiometrics_v2';
 const FASTING_HISTORY_KEY = 'fastingHistory_v1';
 
-let state = { running: false, startTime: null, goalHours: 120 };
+let state = { running: false, startTime: null, goalHours: 120, notified: {}, goalNotified: false };
 let bioRecords = [];
 let fastingHistory = [];
 
@@ -627,17 +638,66 @@ function loadState() {
     if (raw3) fastingHistory = JSON.parse(raw3);
   } catch (e) {}
 
-  // 同意旗標
-  try { state.consent = localStorage.getItem('fasting_consent_v1') === '1'; } catch (e) { state.consent = false; }
+  // 同意旗標（不存進 state / 匯出檔）
+  consented = false;
+  try { consented = localStorage.getItem('fasting_consent_v1') === '1'; } catch (e) {}
+  if (!state.notified || typeof state.notified !== 'object') state.notified = {};
+  // 舊版進行中的斷食沒有通知紀錄：已過的里程碑視為已通知，避免重播
+  if (state.running && state.startTime && !Object.keys(state.notified).length) {
+    const h = (Date.now() - state.startTime) / 3600000;
+    MILESTONES.forEach(m => { if (h >= m) state.notified[m] = true; });
+    if (h >= (state.goalHours || 24)) state.goalNotified = true;
+  }
+  // 清掉不合法的紀錄
+  bioRecords = sanitizeBio(bioRecords);
+  fastingHistory = sanitizeHistory(fastingHistory);
 }
-function saveState() { try { if (state.consent) localStorage.setItem(STATE_KEY, JSON.stringify(state)); } catch (e) {} }
-function saveBio() { try { if (state.consent) localStorage.setItem(BIO_KEY, JSON.stringify(bioRecords)); } catch (e) {} }
-function saveFastingHistory() { try { if (state.consent) localStorage.setItem(FASTING_HISTORY_KEY, JSON.stringify(fastingHistory)); } catch (e) {} }
+let consented = false;
+function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : (typeof v === 'string' && v.trim() !== '' && isFinite(Number(v)) ? Number(v) : null);
+function sanitizeBio(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(r => {
+    if (!r || typeof r !== 'object') return null;
+    const time = num(r.time);
+    if (time == null) return null;
+    const out = { id: String(r.id || (time + '_' + Math.random().toString(36).slice(2, 7))), time,
+      weight: num(r.weight), hr: num(r.hr), glucose: num(r.glucose), sys: num(r.sys), dia: num(r.dia) };
+    if (out.weight == null && out.hr == null && out.glucose == null && !(out.sys != null && out.dia != null)) return null;
+    return out;
+  }).filter(Boolean);
+}
+function sanitizeHistory(arr) {
+  if (!Array.isArray(arr)) return [];
+  return arr.map(f => {
+    if (!f || typeof f !== 'object') return null;
+    const startTime = num(f.startTime), endTime = num(f.endTime);
+    if (startTime == null || endTime == null || endTime < startTime) return null;
+    const durationMs = endTime - startTime;
+    return { id: String(f.id || ('fast_' + endTime)), startTime, endTime, durationMs, durationHours: durationMs / 3600000,
+      goalHours: num(f.goalHours) || 24, note: typeof f.note === 'string' ? f.note.slice(0, 500) : '' };
+  }).filter(Boolean);
+}
+function persistable() { const { consent, ...rest } = state; return rest; }
+function saveState() { try { if (consented) localStorage.setItem(STATE_KEY, JSON.stringify(persistable())); } catch (e) {} }
+function saveBio() { try { if (consented) localStorage.setItem(BIO_KEY, JSON.stringify(bioRecords)); } catch (e) {} }
+function saveFastingHistory() { try { if (consented) localStorage.setItem(FASTING_HISTORY_KEY, JSON.stringify(fastingHistory)); } catch (e) {} }
+function exportCsv() {
+  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const f = (ms) => new Date(ms).toISOString();
+  let csv = '\ufeff類型,開始/時間,結束,時數,目標時數,體重kg,心跳bpm,血糖mg/dL,收縮壓,舒張壓,筆記\n';
+  fastingHistory.forEach(h => { csv += ['斷食', f(h.startTime), f(h.endTime), h.durationHours.toFixed(2), h.goalHours, '', '', '', '', '', h.note].map(q).join(',') + '\n'; });
+  bioRecords.forEach(r => { csv += ['數據', f(r.time), '', '', '', r.weight, r.hr, r.glucose, r.sys, r.dia, ''].map(q).join(',') + '\n'; });
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a'); a.href = url; a.download = 'fasting-data-' + new Date().toISOString().slice(0, 10) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+}
 function exportCurrentData() {
   const payload = {
     exportedAt: new Date().toISOString(),
     version: 1,
-    state,
+    state: persistable(),
     bioRecords,
     fastingHistory
   };
@@ -658,13 +718,26 @@ function applyImportedData(data) {
     throw new Error('匯入資料格式錯誤');
   }
 
-  if (Array.isArray(data.bioRecords)) bioRecords = data.bioRecords;
-  if (Array.isArray(data.fastingHistory)) fastingHistory = data.fastingHistory;
-  if (data.state && typeof data.state === 'object') {
-    state = { ...state, ...data.state };
-    if (typeof state.goalHours === 'number' && state.goalHours > 0) {
-      goalSelect.value = String(state.goalHours);
-    }
+  const mergeById = (cur, inc) => { const ids = new Set(cur.map(x => x.id)); return cur.concat(inc.filter(x => !ids.has(x.id))); };
+  const replaceAll = confirm('匯入方式：\n按「確定」＝取代目前所有資料\n按「取消」＝與目前資料合併（略過重複）');
+  if (Array.isArray(data.bioRecords)) {
+    const inc = sanitizeBio(data.bioRecords);
+    bioRecords = replaceAll ? inc : mergeById(bioRecords, inc);
+  }
+  if (Array.isArray(data.fastingHistory)) {
+    const inc = sanitizeHistory(data.fastingHistory);
+    fastingHistory = replaceAll ? inc : mergeById(fastingHistory, inc);
+  }
+  if (replaceAll && data.state && typeof data.state === 'object') {
+    const st = data.state;
+    const g = num(st.goalHours);
+    if (g && g > 0 && g <= 720) state.goalHours = g;
+    if (st.running === true && num(st.startTime) && num(st.startTime) <= Date.now()) {
+      state.running = true; state.startTime = num(st.startTime);
+      state.notified = (st.notified && typeof st.notified === 'object') ? st.notified : {};
+      state.goalNotified = !!st.goalNotified;
+    } else if (st.running === false) { state.running = false; state.startTime = null; }
+    setGoalSelect(state.goalHours);
   }
 
   saveBio();
@@ -677,6 +750,8 @@ function applyImportedData(data) {
 
 function importCurrentData(file) {
   if (!file) return;
+  if (!consented) { alert('請先同意隱私說明才能匯入並儲存資料（點右上角 🔒）。'); return; }
+  if (file.size > 5 * 1024 * 1024) { alert('檔案過大'); return; }
   const reader = new FileReader();
   reader.onload = () => {
     try {
@@ -716,6 +791,9 @@ const exportDataBtn = document.getElementById('exportDataBtn');
 const importDataBtn = document.getElementById('importDataBtn');
 const importFileInput = document.getElementById('importFileInput');
 const clearDataBtn = document.getElementById('clearDataBtn');
+const wipeDataBtn = document.getElementById('wipeDataBtn');
+const nosaveBanner = document.getElementById('nosaveBanner');
+const exportCsvBtn = document.getElementById('exportCsvBtn');
 const bioList = document.getElementById('bioList');
 const historyList = document.getElementById('historyList');
 const chartGrid = document.getElementById('chartGrid');
@@ -725,6 +803,13 @@ function toLocalDatetimeInputValue(ms) {
   const d = new Date(ms);
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function setGoalSelect(h) {
+  goalSelect.value = String(h);
+  if (goalSelect.value !== String(h)) {
+    const o = document.createElement('option'); o.value = String(h); o.textContent = h + ' 小時（自訂）';
+    goalSelect.appendChild(o); goalSelect.value = String(h);
+  }
 }
 function fmtHMS(totalSeconds) {
   totalSeconds = Math.max(0, Math.floor(totalSeconds));
@@ -749,7 +834,11 @@ function notify(text) {
 }
 
 /* ---------------- 徽章渲染 ---------------- */
+let lastBadgeKey = '';
 function renderBadges(elapsedHours, goalHours) {
+  const key = goalHours + '|' + MILESTONES.filter(m => elapsedHours >= m).length + '|' + getPhase(elapsedHours).hours + '|' + ringWrap.clientWidth;
+  if (key === lastBadgeKey) return;
+  lastBadgeKey = key;
   ringWrap.querySelectorAll('.badge').forEach(b => b.remove());
   const maxScale = Math.max(goalHours, ...MILESTONES.filter(m => m <= goalHours * 1.4));
   const relevant = MILESTONES.filter(m => m <= maxScale);
@@ -793,7 +882,7 @@ function updateDisplay() {
   }
 
   const nowMs = Date.now();
-  const elapsedMs = nowMs - state.startTime;
+  const elapsedMs = Math.max(0, nowMs - state.startTime);
   const elapsedSec = elapsedMs / 1000;
   const elapsedHours = elapsedSec / 3600;
   const pct = Math.min(100, (elapsedHours / goalHours) * 100);
@@ -802,6 +891,7 @@ function updateDisplay() {
   elapsedText.textContent = fmtHMS(elapsedSec);
   goalText.textContent = '目標 ' + goalHours + ' 小時';
   ringBg.style.setProperty('--pct', pct);
+  ringWrap.setAttribute('aria-valuenow', pct.toFixed(0));
 
   startLabel.textContent = fmtDateShort(state.startTime);
   endLabel.textContent = fmtDateShort(state.startTime + goalHours * 3600 * 1000);
@@ -814,16 +904,24 @@ function updateDisplay() {
   checkMilestoneNotify(elapsedHours);
 }
 
-let notifiedMilestones = {};
 function checkMilestoneNotify(elapsedHours) {
+  let changed = false;
   MILESTONES.forEach((m) => {
-    if (elapsedHours >= m && !notifiedMilestones[m]) {
-      notifiedMilestones[m] = true;
+    if (elapsedHours >= m && !state.notified[m]) {
+      state.notified[m] = true; changed = true;
       notify(`✅ 已達成 ${m} 小時！${getPhase(m).title}`);
       showCelebration();
       playSound();
     }
   });
+  const goal = state.goalHours || 24;
+  if (elapsedHours >= goal && !state.goalNotified) {
+    state.goalNotified = true; changed = true;
+    notify(`🎯 已達成目標 ${goal} 小時！可以結束斷食了`);
+    showCelebration();
+    playSound();
+  }
+  if (changed) saveState();
 }
 
 function showCelebration() {
@@ -837,8 +935,14 @@ function showCelebration() {
   setTimeout(() => celebration.remove(), 700);
 }
 
+let sharedAudioCtx = null;
 function playSound() {
-  const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+  try {
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return;
+  if (!sharedAudioCtx) sharedAudioCtx = new AC();
+  const audioContext = sharedAudioCtx;
+  if (audioContext.state === 'suspended') audioContext.resume();
   const oscillator = audioContext.createOscillator();
   const gainNode = audioContext.createGain();
   oscillator.connect(gainNode);
@@ -848,6 +952,7 @@ function playSound() {
   gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
   oscillator.start(audioContext.currentTime);
   oscillator.stop(audioContext.currentTime + 0.3);
+  } catch (e) {}
 }
 
 let lastStartFieldRefreshSec = -1;
@@ -858,8 +963,18 @@ function tick() {
     lastStartFieldRefreshSec = nowSec;
     startInput.value = toLocalDatetimeInputValue(Date.now());
   }
-  requestAnimationFrame(tick);
 }
+setInterval(() => { try { tick(); } catch (e) {} }, 1000);
+
+/* ---------------- 螢幕常亮 ---------------- */
+let wakeLock = null;
+async function requestWakeLock() {
+  try { if ('wakeLock' in navigator && state.running && !wakeLock) {
+    wakeLock = await navigator.wakeLock.request('screen');
+    wakeLock.addEventListener('release', () => { wakeLock = null; });
+  } } catch (e) { wakeLock = null; }
+}
+function releaseWakeLock() { try { if (wakeLock) wakeLock.release(); } catch (e) {} wakeLock = null; }
 
 /* ---------------- 開始 / 結束 ---------------- */
 let startInputManuallyEdited = false;
@@ -869,11 +984,17 @@ startBtn.addEventListener('click', () => {
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   // 除非使用者手動修改過開始時間欄位，否則一律使用「按下當下」的時間，避免計時器一開始就已經算了一段時間
   const startMs = (startInputManuallyEdited && startInput.value) ? new Date(startInput.value).getTime() : Date.now();
+  if (!isFinite(startMs) || startMs > Date.now() + 60000) { alert('開始時間不能是未來的時間'); return; }
+  if (Date.now() - startMs > 30 * 24 * 3600000) { alert('開始時間距今超過 30 天，請重新確認'); return; }
+  if (state.running && !confirm('目前已有進行中的斷食，要重新開始嗎？（不會存入歷史）')) return;
   state.running = true;
   state.startTime = startMs;
   state.goalHours = Number(goalSelect.value) || 24;
-  notifiedMilestones = {};
+  state.notified = {};
+  state.goalNotified = false;
+  lastBadgeKey = '';
   startInputManuallyEdited = false;
+  requestWakeLock();
   saveState();
   updateDisplay();
 });
@@ -886,6 +1007,7 @@ endBtn.addEventListener('click', () => {
     const durationHours = durationMs / 3600000;
     
     const noteText = prompt('添加本次斷食的筆記（選填）:', '');
+    if (!consented) alert('尚未同意隱私說明，這筆紀錄不會被儲存。');
     
     fastingHistory.unshift({
       id: 'fast_' + endTime,
@@ -900,6 +1022,10 @@ endBtn.addEventListener('click', () => {
     renderFastingHistory();
     state.running = false;
     state.startTime = null;
+    state.notified = {};
+    state.goalNotified = false;
+    lastBadgeKey = '';
+    releaseWakeLock();
     saveState();
     updateDisplay();
   }
@@ -912,6 +1038,17 @@ goalSelect.addEventListener('change', () => {
 });
 
 /* ---------------- 生理數據記錄 ---------------- */
+function dangerWarnings(r) {
+  const w = [];
+  if (r.glucose && r.glucose < 54) w.push('血糖 < 54 mg/dL：嚴重低血糖');
+  else if (r.glucose && r.glucose < 70) w.push('血糖 < 70 mg/dL：偏低');
+  if (r.glucose && r.glucose > 250) w.push('血糖 > 250 mg/dL：偏高');
+  if (r.hr && r.hr > 120) w.push('心跳 > 120 bpm：過快');
+  if (r.hr && r.hr < 45) w.push('心跳 < 45 bpm：偏慢');
+  if (r.sys && r.dia && (r.sys < 90 || r.dia < 60)) w.push('血壓偏低（< 90/60）');
+  if (r.sys && r.dia && (r.sys >= 180 || r.dia >= 120)) w.push('血壓過高（≥ 180/120）');
+  return w;
+}
 function renderBioList() {
   bioList.innerHTML = '';
   if (bioRecords.length === 0) {
@@ -938,12 +1075,15 @@ function renderBioList() {
     if (rec.sys && rec.dia) parts.push('▲ ' + rec.sys + '/' + rec.dia);
     valsDiv.textContent = parts.join('   ') || '（無數值）';
     left.appendChild(valsDiv);
+    const warns = dangerWarnings(rec);
+    if (warns.length) { const wd = document.createElement('div'); wd.className = 'bio-warn'; wd.textContent = '⚠️ ' + warns.join('；'); left.appendChild(wd); }
 
     item.appendChild(left);
 
     const removeBtn = document.createElement('button');
     removeBtn.className = 'bio-remove';
     removeBtn.textContent = '✕';
+    removeBtn.setAttribute('aria-label', '刪除這筆記錄');
     removeBtn.addEventListener('click', () => {
       bioRecords = bioRecords.filter((r) => r.id !== rec.id);
       saveBio();
@@ -964,10 +1104,19 @@ bioAddBtn.addEventListener('click', () => {
   const sys = parseFloat(sysInput.value);
   const dia = parseFloat(diaInput.value);
 
+  if ((sys && !dia) || (!sys && dia)) { alert('血壓需同時填寫收縮壓與舒張壓'); return; }
   if (!weight && !hr && !glucose && !(sys && dia)) {
     alert('請至少填寫一項數值（體重、心跳、血糖，或完整的血壓收縮/舒張壓）');
     return;
   }
+  const inRange = (v, lo, hi) => isNaN(v) || !v || (v >= lo && v <= hi);
+  if (!inRange(weight, 20, 400) || !inRange(hr, 20, 250) || !inRange(glucose, 10, 800) || !inRange(sys, 50, 300) || !inRange(dia, 30, 200)) {
+    alert('有數值超出合理範圍，請重新確認');
+    return;
+  }
+  const warns = dangerWarnings({ hr, glucose, sys, dia });
+  if (warns.length) alert('⚠️ 健康提醒\n' + warns.join('\n') + '\n\n若同時感到不適，請停止斷食、補充飲食並盡快就醫。');
+  if (!consented) alert('尚未同意隱私說明，這筆數據不會被儲存。');
 
   bioRecords.push({
     id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
@@ -993,13 +1142,13 @@ bioAddBtn.addEventListener('click', () => {
 const themeToggle = document.getElementById('themeToggle');
 const presetBtns = document.querySelectorAll('.preset-btn');
 const THEME_KEY = 'fastTimerTheme_v1';
-let isDarkMode = localStorage.getItem(THEME_KEY) === 'dark';
+let isDarkMode = lsGet(THEME_KEY) === 'dark';
 
 function applyTheme() {
   document.body.classList.toggle('dark-mode', isDarkMode);
   themeToggle.textContent = isDarkMode ? '☀️' : '🌙';
   themeToggle.classList.toggle('active', isDarkMode);
-  localStorage.setItem(THEME_KEY, isDarkMode ? 'dark' : 'light');
+  lsSet(THEME_KEY, isDarkMode ? 'dark' : 'light');
 }
 
 themeToggle.addEventListener('click', () => {
@@ -1019,6 +1168,8 @@ presetBtns.forEach(btn => {
 });
 
 
+exportDataBtn.addEventListener('click', exportCurrentData);
+exportCsvBtn.addEventListener('click', exportCsv);
 importDataBtn.addEventListener('click', () => {
   importFileInput.click();
 });
@@ -1175,7 +1326,7 @@ function buildStatsCard(label, unit, records, valueKey, icon) {
   labelEl.textContent = `${icon} ${label}`;
   card.appendChild(labelEl);
   
-  const filtered = records.filter(r => r[valueKey] != null);
+  const filtered = records.filter(r => r[valueKey] != null).sort((a, b) => a.time - b.time);
   if (filtered.length === 0) {
     card.innerHTML += '<div class="stats-value">—</div><div class="stats-change">無數據</div>';
     return card;
@@ -1212,13 +1363,14 @@ function renderStatsSummary() {
   const statsSummary = document.getElementById('statsSummary');
   statsSummary.innerHTML = '';
   
+  renderFastingStats();
   if (bioRecords.length === 0) return;
   
   statsSummary.appendChild(buildStatsCard('體重', 'kg', bioRecords, 'weight', '⚖'));
   statsSummary.appendChild(buildStatsCard('心率', 'bpm', bioRecords, 'hr', '♥'));
   statsSummary.appendChild(buildStatsCard('血糖', 'mg/dL', bioRecords, 'glucose', '◆'));
   
-  const bpFiltered = bioRecords.filter(r => r.sys != null && r.dia != null);
+  const bpFiltered = bioRecords.filter(r => r.sys != null && r.dia != null).sort((a, b) => a.time - b.time);
   if (bpFiltered.length > 0) {
     const sysValues = bpFiltered.map(r => r.sys);
     const diaValues = bpFiltered.map(r => r.dia);
@@ -1245,14 +1397,10 @@ function renderStatsSummary() {
     
     statsSummary.appendChild(bpCard);
   }
-  
-  renderFastingStats();
 }
 
 function renderFastingStats() {
-  const now = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthFasts = fastingHistory.filter(f => new Date(f.endTime) >= monthStart);
+  const monthFasts = fastingHistory;
   
   const maxLength = monthFasts.length > 0 
     ? Math.max(...monthFasts.map(f => f.durationHours)).toFixed(1) 
@@ -1263,9 +1411,9 @@ function renderFastingStats() {
   const totalMs = monthFasts.reduce((sum, f) => sum + f.durationMs, 0);
   const totalDays = (totalMs / (24 * 3600 * 1000)).toFixed(1);
   
-  document.getElementById('maxFastLength').textContent = maxLength;
-  document.getElementById('avgFastLength').textContent = avgLength;
-  document.getElementById('totalFastTime').textContent = totalDays;
+  document.getElementById('maxFastLength').textContent = fastingHistory.length ? maxLength : '—';
+  document.getElementById('avgFastLength').textContent = fastingHistory.length ? avgLength : '—';
+  document.getElementById('totalFastTime').textContent = fastingHistory.length ? totalDays : '—';
 }
 
 function fmtDurationHours(ms) {
@@ -1317,6 +1465,26 @@ function renderFastingHistory() {
       item.appendChild(noteEl);
     }
 
+    const actions = document.createElement('div');
+    actions.className = 'history-actions';
+    const editBtn = document.createElement('button');
+    editBtn.textContent = '編輯筆記';
+    editBtn.addEventListener('click', () => {
+      const t = prompt('編輯筆記：', entry.note || '');
+      if (t === null) return;
+      entry.note = t.slice(0, 500);
+      saveFastingHistory(); renderFastingHistory();
+    });
+    const delBtn = document.createElement('button');
+    delBtn.textContent = '刪除';
+    delBtn.addEventListener('click', () => {
+      if (!confirm('刪除這筆斷食紀錄？')) return;
+      fastingHistory = fastingHistory.filter(f => f.id !== entry.id);
+      saveFastingHistory(); renderCharts();
+    });
+    actions.appendChild(editBtn); actions.appendChild(delBtn);
+    item.appendChild(actions);
+
     historyList.appendChild(item);
   });
 }
@@ -1342,7 +1510,7 @@ function renderCharts() {
 function updateOnlineStatus() { offlineBadge.classList.toggle('show', !navigator.onLine); }
 window.addEventListener('online', updateOnlineStatus);
 window.addEventListener('offline', updateOnlineStatus);
-document.addEventListener('visibilitychange', () => { if (!document.hidden) updateDisplay(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { updateDisplay(); requestWakeLock(); } });
 
 /* --------------- 同意對話 & 隱私操作 --------------- */
 function showConsentModal() {
@@ -1364,24 +1532,29 @@ function showConsentModal() {
     </div>`;
   document.body.appendChild(overlay);
   document.getElementById('consentAccept').addEventListener('click', () => {
-    state.consent = true;
-    try { localStorage.setItem('fasting_consent_v1', '1'); } catch (e) {}
+    consented = true;
+    lsSet('fasting_consent_v1', '1');
     overlay.remove();
+    nosaveBanner.hidden = true;
+    saveState(); saveBio(); saveFastingHistory();
   });
   document.getElementById('consentDecline').addEventListener('click', () => {
-    alert('未同意則無法儲存或匯入個人健康資料。您仍可離開並使用非儲存模式。');
-    // 保持 overlay，讓使用者決定離開或同意
+    consented = false;
+    try { localStorage.removeItem('fasting_consent_v1'); } catch (e) {}
+    overlay.remove();
+    nosaveBanner.hidden = false;
   });
 }
 
 document.getElementById('privacyBtn').addEventListener('click', () => showConsentModal());
-document.getElementById('clearDataBtn').addEventListener('click', () => {
+wipeDataBtn.addEventListener('click', () => {
   if (!confirm('確定要刪除所有本機資料？此操作無法還原')) return;
   try {
     localStorage.removeItem(STATE_KEY);
     localStorage.removeItem(BIO_KEY);
     localStorage.removeItem(FASTING_HISTORY_KEY);
     localStorage.removeItem('fasting_consent_v1');
+    localStorage.removeItem(THEME_KEY);
   } catch (e) {}
   alert('本機資料已刪除，頁面將重新整理。');
   location.reload();
@@ -1389,15 +1562,8 @@ document.getElementById('clearDataBtn').addEventListener('click', () => {
 
 /* --------------- 鍵盤快捷鍵 --------------- */
 document.addEventListener('keydown', (e) => {
-  if (e.target === startInput || e.target === weightInput || e.target === hrInput || 
-      e.target === glucoseInput || e.target === sysInput || e.target === diaInput) return;
-  
-  if (e.code === 'Space') {
-    e.preventDefault();
-    if (state.running) endBtn.click();
-    else startBtn.click();
-  }
-  
+  if (e.target.closest && e.target.closest('input, select, textarea, button, a')) return;
+  if (document.getElementById('consentOverlay') || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.code === 'Digit1') tabBtns[0]?.click();
   if (e.code === 'Digit2') tabBtns[1]?.click();
   if (e.code === 'Digit3') tabBtns[2]?.click();
@@ -1414,9 +1580,10 @@ if ('serviceWorker' in navigator) {
 loadState();
 applyTheme();
 // 顯示同意對話（若尚未同意）
-if (!state.consent) showConsentModal();
+nosaveBanner.hidden = consented;
+if (!consented) showConsentModal();
 
-goalSelect.value = String(state.goalHours || 120);
+setGoalSelect(state.goalHours || 120);
 startInput.value = toLocalDatetimeInputValue(state.startTime || Date.now());
 updateOnlineStatus();
 renderBioList();

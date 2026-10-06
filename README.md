@@ -7,13 +7,19 @@
 - 記錄體重、心跳、血糖、血壓，並保留歷史清單
 - 每項數據皆有獨立趨勢折線圖（最近 20 筆），血壓圖同時顯示收縮壓與舒張壓
 - 資料存在瀏覽器本機（localStorage），離線或重新整理也不會遺失
-- 達成每個里程碑時可跳出瀏覽器通知（需允許通知權限）
+- 達成每個里程碑與目標時數時可跳出瀏覽器通知（需允許通知權限，頁面需開啟）
+- 斷食歷史紀錄（可編輯筆記、刪除）與統計
+- 匯出 / 匯入 JSON 備份（可選擇取代或合併）、匯出 CSV
+- 血糖、心跳、血壓異常時顯示警示
+- 隱私同意機制：未同意時資料不會儲存；可一鍵刪除本機資料
+- 斷食進行中自動要求螢幕常亮（瀏覽器支援時）
+- 快捷鍵：1 / 2 / 3 切換頁籤
 - 深色「生理監測儀」風格介面，心電圖脈動線作為視覺主軸
 
 ## 部署方式（GitHub Pages，免費）
 
 1. 到 https://github.com 建立一個新的 public repository
-2. 把這個資料夾內的檔案（index.html、manifest.json、icon.svg、sw.js）上傳上去
+2. 把這個資料夾內的檔案（index.html、manifest.json、icon.svg、sw.js、icon-*.png）上傳上去
 3. 進入 repo 的 **Settings → Pages**
 4. Source 選 `Deploy from a branch`，Branch 選 `main`、資料夾選 `/ (root)`，儲存
 5. 等 1-2 分鐘，會拿到網址 `https://你的帳號.github.io/repo名稱/`

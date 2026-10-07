@@ -268,7 +268,16 @@
   .legend-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
   .chart-foot { font-size: 12px; color: var(--text-faint); margin-top: 6px; }
   .chart-empty { font-size: 14px; color: var(--text-faint); text-align: center; padding: 14px 0; line-height: 1.6; }
-  svg.sparkline { width: 100%; height: 72px; display: block; }
+  svg.sparkline { width: 100%; height: auto; display: block; touch-action: manipulation; }
+  svg.sparkline .pt { transition: r 0.15s; }
+  svg.sparkline .pt.sel { r: 5; stroke: var(--surface); stroke-width: 2; }
+  svg.sparkline .hit { cursor: pointer; }
+  .chart-tip { font-size: 13px; color: var(--text); margin-top: 6px; font-variant-numeric: tabular-nums; min-height: 20px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--text-dim); font-size: 13px; }
+  .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface); }
+  .bio-form .chips-field { grid-column: 1 / -1; }
+  .stats-card.wide { grid-column: 1 / -1; }
   .disclaimer { font-size: 12px; color: var(--text-faint); line-height: 1.7; margin: 8px 0 0; flex-shrink: 0; }
 
   /* ================= NAV ================= */
@@ -426,6 +435,10 @@
             <input type="number" step="1" id="diaInput" placeholder="80" inputmode="numeric" aria-label="舒張壓" />
           </div>
         </div>
+        <div class="field chips-field">
+          <label>症狀（可複選）</label>
+          <div class="chips" id="symptomChips"></div>
+        </div>
         <button class="bio-add-btn" id="bioAddBtn">新增記錄</button>
       </div>
       <div class="settings-row">
@@ -566,6 +579,23 @@ let consented = false;
 function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
 const num = (v) => (typeof v === 'number' && isFinite(v)) ? v : (typeof v === 'string' && v.trim() !== '' && isFinite(Number(v)) ? Number(v) : null);
+const SYMPTOMS = [['dizzy', '頭暈'], ['palpitation', '心悸'], ['nausea', '噁心'], ['headache', '頭痛'], ['fatigue', '疲倦'], ['insomnia', '睡不好'], ['hunger', '飢餓感強'], ['tremor', '手抖']];
+const SYMPTOM_LABEL = Object.fromEntries(SYMPTOMS);
+const selectedSymptoms = new Set();
+function renderSymptomChips() {
+  const box = document.getElementById('symptomChips');
+  box.innerHTML = '';
+  SYMPTOMS.forEach(([key, label]) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.textContent = label;
+    b.setAttribute('aria-pressed', selectedSymptoms.has(key) ? 'true' : 'false');
+    b.addEventListener('click', () => {
+      if (selectedSymptoms.has(key)) selectedSymptoms.delete(key); else selectedSymptoms.add(key);
+      b.setAttribute('aria-pressed', selectedSymptoms.has(key) ? 'true' : 'false');
+    });
+    box.appendChild(b);
+  });
+}
 function sanitizeBio(arr) {
   if (!Array.isArray(arr)) return [];
   return arr.map(r => {
@@ -573,8 +603,9 @@ function sanitizeBio(arr) {
     const time = num(r.time);
     if (time == null) return null;
     const out = { id: String(r.id || (time + '_' + Math.random().toString(36).slice(2, 7))), time,
-      weight: num(r.weight), hr: num(r.hr), glucose: num(r.glucose), sys: num(r.sys), dia: num(r.dia) };
-    if (out.weight == null && out.hr == null && out.glucose == null && !(out.sys != null && out.dia != null)) return null;
+      weight: num(r.weight), hr: num(r.hr), glucose: num(r.glucose), sys: num(r.sys), dia: num(r.dia),
+      symptoms: Array.isArray(r.symptoms) ? r.symptoms.filter(k => SYMPTOM_LABEL[k]) : [] };
+    if (out.weight == null && out.hr == null && out.glucose == null && !(out.sys != null && out.dia != null) && !out.symptoms.length) return null;
     return out;
   }).filter(Boolean);
 }
@@ -596,9 +627,9 @@ function saveFastingHistory() { try { if (consented) localStorage.setItem(FASTIN
 function exportCsv() {
   const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
   const f = (ms) => new Date(ms).toISOString();
-  let csv = '\ufeff類型,開始/時間,結束,時數,目標時數,體重kg,心跳bpm,血糖mg/dL,收縮壓,舒張壓,筆記\n';
+  let csv = '\ufeff類型,開始/時間,結束,時數,目標時數,體重kg,心跳bpm,血糖mg/dL,收縮壓,舒張壓,筆記/症狀\n';
   fastingHistory.forEach(h => { csv += ['斷食', f(h.startTime), f(h.endTime), h.durationHours.toFixed(2), h.goalHours, '', '', '', '', '', h.note].map(q).join(',') + '\n'; });
-  bioRecords.forEach(r => { csv += ['數據', f(r.time), '', '', '', r.weight, r.hr, r.glucose, r.sys, r.dia, ''].map(q).join(',') + '\n'; });
+  bioRecords.forEach(r => { csv += ['數據', f(r.time), '', '', '', r.weight, r.hr, r.glucose, r.sys, r.dia, (r.symptoms || []).map(k => SYMPTOM_LABEL[k]).join('、')].map(q).join(',') + '\n'; });
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const a = document.createElement('a'); a.href = url; a.download = 'fasting-data-' + new Date().toISOString().slice(0, 10) + '.csv';
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
@@ -1039,6 +1070,7 @@ function dangerWarnings(r) {
   if (r.hr && r.hr < 45) w.push('心跳 < 45 bpm：偏慢');
   if (r.sys && r.dia && (r.sys < 90 || r.dia < 60)) w.push('血壓偏低（< 90/60）');
   if (r.sys && r.dia && (r.sys >= 180 || r.dia >= 120)) w.push('血壓過高（≥ 180/120）');
+  if (r.symptoms && (r.symptoms.includes('dizzy') || r.symptoms.includes('palpitation'))) w.push('出現頭暈或心悸');
   return w;
 }
 function renderBioList() {
@@ -1065,6 +1097,7 @@ function renderBioList() {
     if (rec.hr) parts.push('♥ ' + rec.hr + 'bpm');
     if (rec.glucose) parts.push('◆ ' + dispVal('glucose', rec.glucose) + unitLabel('glucose'));
     if (rec.sys && rec.dia) parts.push('▲ ' + rec.sys + '/' + rec.dia);
+    if (rec.symptoms && rec.symptoms.length) parts.push('症狀：' + rec.symptoms.map(k => SYMPTOM_LABEL[k]).join('、'));
     valsDiv.textContent = parts.join('   ') || '（無數值）';
     left.appendChild(valsDiv);
     const warns = dangerWarnings(rec);
@@ -1097,8 +1130,8 @@ bioAddBtn.addEventListener('click', () => {
   const dia = parseFloat(diaInput.value);
 
   if ((sys && !dia) || (!sys && dia)) { alert('血壓需同時填寫收縮壓與舒張壓'); return; }
-  if (!weight && !hr && !glucose && !(sys && dia)) {
-    alert('請至少填寫一項數值（體重、心跳、血糖，或完整的血壓收縮/舒張壓）');
+  if (!weight && !hr && !glucose && !(sys && dia) && !selectedSymptoms.size) {
+    alert('請至少填寫一項數值，或選擇症狀');
     return;
   }
   const inRange = (v, lo, hi) => isNaN(v) || !v || (v >= lo && v <= hi);
@@ -1106,7 +1139,7 @@ bioAddBtn.addEventListener('click', () => {
     alert('有數值超出合理範圍，請重新確認');
     return;
   }
-  const warns = dangerWarnings({ hr, glucose, sys, dia });
+  const warns = dangerWarnings({ hr, glucose, sys, dia, symptoms: [...selectedSymptoms] });
   if (warns.length) alert('⚠️ 健康提醒\n' + warns.join('\n') + '\n\n若同時感到不適，請停止斷食、補充飲食並盡快就醫。');
   if (!consented) alert('尚未同意隱私說明，這筆數據不會被儲存。');
 
@@ -1118,6 +1151,7 @@ bioAddBtn.addEventListener('click', () => {
     glucose: isNaN(glucose) ? null : glucose,
     sys: isNaN(sys) ? null : sys,
     dia: isNaN(dia) ? null : dia,
+    symptoms: [...selectedSymptoms],
   });
   saveBio();
   renderBioList();
@@ -1128,6 +1162,8 @@ bioAddBtn.addEventListener('click', () => {
   glucoseInput.value = '';
   sysInput.value = '';
   diaInput.value = '';
+  selectedSymptoms.clear();
+  renderSymptomChips();
 });
 
 /* ---------- 黑暗模式與快速預設 ---------- */
@@ -1220,40 +1256,54 @@ clearDataBtn.addEventListener('click', () => {
 });
 
 /* ---------------- 趨勢圖表 ---------------- */
-const CHART_W = 300;
-const CHART_H = 60;
 const MAX_POINTS = 60;
 let chartRange = 0;
 const inRange = (r) => chartRange === 0 || r.time >= Date.now() - chartRange * 86400000;
 
-function buildPolyline(values, w, h, min, max) {
-  if (values.length === 0) return '';
-  const range = (max - min) || 1;
-  const stepX = values.length > 1 ? w / (values.length - 1) : 0;
-  return values.map((v, i) => {
-    const x = values.length > 1 ? i * stepX : w / 2;
-    const y = h - ((v - min) / range) * (h - 8) - 4;
-    return x.toFixed(1) + ',' + y.toFixed(1);
-  }).join(' ');
-}
-
-function makeSparklineSVG(seriesList) {
-  const allVals = seriesList.flatMap(s => s.values);
-  if (allVals.length === 0) return null;
-  const min = Math.min(...allVals);
-  const max = Math.max(...allVals);
-  let svg = `<svg class="sparkline" viewBox="0 0 ${CHART_W} ${CHART_H}" preserveAspectRatio="none">`;
-  seriesList.forEach(s => {
-    if (s.values.length === 0) return;
-    const pts = buildPolyline(s.values, CHART_W, CHART_H, min, max);
-    svg += `<polyline points="${pts}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`;
-    const lastX = s.values.length > 1 ? CHART_W : CHART_W / 2;
-    const range = (max - min) || 1;
-    const lastY = CHART_H - ((s.values[s.values.length - 1] - min) / range) * (CHART_H - 8) - 4;
-    svg += `<circle cx="${lastX}" cy="${lastY.toFixed(1)}" r="3.2" fill="${s.color}" />`;
+const SVG_W = 320, SVG_H = 120, PL = 42, PR = 308, PT = 10, PB = 98;
+function makeChartSVG(times, seriesList, fmtY) {
+  const all = seriesList.flatMap(s => s.values);
+  let min = Math.min(...all), max = Math.max(...all);
+  const pad = (max - min) * 0.1 || 1;
+  min -= pad; max += pad;
+  const t0 = times[0], t1 = times[times.length - 1];
+  const X = (t) => t1 === t0 ? (PL + PR) / 2 : PL + ((t - t0) / (t1 - t0)) * (PR - PL);
+  const Y = (v) => PB - ((v - min) / (max - min)) * (PB - PT);
+  let svg = `<svg class="sparkline" viewBox="0 0 ${SVG_W} ${SVG_H}" role="img">`;
+  [min + pad, (min + max) / 2, max - pad].forEach(v => {
+    const y = Y(v).toFixed(1);
+    svg += `<line x1="${PL}" x2="${PR}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1" />`;
+    svg += `<text x="${PL - 6}" y="${(+y + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-faint)">${fmtY(v)}</text>`;
   });
-  svg += `</svg>`;
-  return svg;
+  seriesList.forEach(sr => {
+    const pts = sr.values.map((v, i) => X(times[i]).toFixed(1) + ',' + Y(v).toFixed(1)).join(' ');
+    svg += `<polyline points="${pts}" fill="none" stroke="${sr.color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />`;
+    if (times.length <= 40) sr.values.forEach((v, i) => {
+      svg += `<circle class="pt" data-i="${i}" cx="${X(times[i]).toFixed(1)}" cy="${Y(v).toFixed(1)}" r="3" fill="${sr.color}" />`;
+    });
+  });
+  // 透明的大範圍觸控區
+  times.forEach((t, i) => { svg += `<rect class="hit" data-i="${i}" x="${(X(t) - 10).toFixed(1)}" y="0" width="20" height="${SVG_H}" fill="transparent" />`; });
+  return svg + '</svg>';
+}
+// 圖表 + 點選查看數值
+function attachChart(card, times, seriesList, fmtY, tipText) {
+  const wrap = document.createElement('div');
+  wrap.innerHTML = makeChartSVG(times, seriesList, fmtY);
+  const svg = wrap.firstChild;
+  card.appendChild(svg);
+  const tip = document.createElement('div');
+  tip.className = 'chart-tip';
+  card.appendChild(tip);
+  const show = (i) => {
+    tip.textContent = fmtDateShort(times[i]) + '　' + tipText(i);
+    svg.querySelectorAll('.pt').forEach(c => c.classList.toggle('sel', Number(c.dataset.i) === i));
+  };
+  svg.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-i]');
+    if (t) show(Number(t.dataset.i));
+  });
+  show(times.length - 1);
 }
 
 function buildChartCard(label, unit, records, valueKey, color, latestFormatter) {
@@ -1288,10 +1338,8 @@ function buildChartCard(label, unit, records, valueKey, color, latestFormatter) 
     return card;
   }
 
-  const svgHtml = makeSparklineSVG([{ values: filtered.map(r => r[valueKey]), color }]);
-  const wrap = document.createElement('div');
-  wrap.innerHTML = svgHtml;
-  card.appendChild(wrap.firstChild);
+  attachChart(card, filtered.map(r => r.time), [{ values: filtered.map(r => r[valueKey]), color }],
+    (v) => +dispVal(valueKey, v).toFixed(1), (i) => dispVal(valueKey, filtered[i][valueKey]) + ' ' + unit);
   const vals = filtered.map(r => dispVal(valueKey, r[valueKey]));
   const foot = document.createElement('div');
   foot.className = 'chart-foot';
@@ -1333,13 +1381,10 @@ function buildBpChartCard(records) {
     return card;
   }
 
-  const svgHtml = makeSparklineSVG([
+  attachChart(card, filtered.map(r => r.time), [
     { values: filtered.map(r => r.sys), color: 'var(--c-sys)' },
     { values: filtered.map(r => r.dia), color: 'var(--c-dia)' },
-  ]);
-  const wrap = document.createElement('div');
-  wrap.innerHTML = svgHtml;
-  card.appendChild(wrap.firstChild);
+  ], (v) => Math.round(v), (i) => filtered[i].sys + '/' + filtered[i].dia + ' mmHg');
 
   const legend = document.createElement('div');
   legend.className = 'chart-legend';
@@ -1432,6 +1477,19 @@ function renderStatsSummary() {
     bpCard.appendChild(statsEl);
     
     statsSummary.appendChild(bpCard);
+  }
+
+  const counts = {};
+  bioRecords.forEach(r => (r.symptoms || []).forEach(k => { counts[k] = (counts[k] || 0) + 1; }));
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  if (top.length) {
+    const card = document.createElement('div');
+    card.className = 'stats-card wide';
+    const l = document.createElement('div'); l.className = 'stats-label'; l.textContent = '症狀次數';
+    const v = document.createElement('div'); v.className = 'stats-change';
+    v.textContent = top.map(([k, n]) => SYMPTOM_LABEL[k] + ' ' + n).join('　');
+    card.appendChild(l); card.appendChild(v);
+    statsSummary.appendChild(card);
   }
 }
 
@@ -1624,6 +1682,7 @@ if (!consented) showConsentModal();
 setGoalSelect(state.goalHours || 120);
 startInput.value = toLocalDatetimeInputValue(state.startTime || Date.now());
 updateOnlineStatus();
+renderSymptomChips();
 renderBioList();
 renderCharts();
 updateDisplay();

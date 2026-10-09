@@ -166,14 +166,14 @@
 
   /* ================= HOME ================= */
   .home-main-card { flex: 1 0 auto; display: flex; flex-direction: column; padding: 16px; }
-  .setup-row { display: grid; grid-template-columns: 1.6fr 1fr; gap: 10px; }
+  .setup-row { display: grid; grid-template-columns: 1fr; gap: 10px; }
   .preset-buttons { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 12px; }
   .preset-btn { height: 36px; background: transparent; border: 1px solid var(--line); border-radius: 999px; color: var(--text-dim); font-size: 13px; }
   .preset-btn:hover { border-color: var(--text-faint); color: var(--text); }
   .preset-btn.active { background: var(--text); border-color: var(--text); color: var(--surface); }
 
   .ring-section { display: flex; align-items: center; justify-content: center; flex: 1; padding: 12px 0; }
-  .ring-wrap { position: relative; width: min(100%, clamp(190px, calc(100svh - 500px), 300px)); aspect-ratio: 1; container-type: inline-size; }
+  .ring-wrap { position: relative; width: min(100%, clamp(190px, calc(100svh - 560px), 300px)); aspect-ratio: 1; container-type: inline-size; }
   .ring-bg {
     position: absolute; inset: 0; border-radius: 50%;
     background: conic-gradient(from 0deg, var(--phase) 0 calc(var(--pct, 0) * 1%), var(--track) 0);
@@ -234,6 +234,8 @@
 
   /* ================= CHARTS ================= */
   .fast-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .fast-stats .stats-card { padding: 12px 10px; }
+  .fast-stats .stats-value { font-size: 14px; line-height: 1.35; min-height: 38px; }
   .stats-summary { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 12px; flex-shrink: 0; }
   .stats-summary:empty { display: none; }
   .stats-card { background: var(--surface-2); border-radius: var(--r-ctl); padding: 12px; }
@@ -792,10 +794,17 @@ function toLocalDatetimeInputValue(ms) {
   const pad = (n) => String(n).padStart(2, '0');
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
+function fmtHD(h) {
+  const t = Math.floor(Math.max(0, h));
+  if (t < 24) return t + ' 小時';
+  const d = Math.floor(t / 24), r = t % 24;
+  return d + ' 天' + (r ? ' ' + r + ' 小時' : '');
+}
+function fmtGoal(h) { return h >= 24 ? h + ' 小時（' + fmtHD(h) + '）' : h + ' 小時'; }
 function setGoalSelect(h) {
   goalSelect.value = String(h);
   if (goalSelect.value !== String(h)) {
-    const o = document.createElement('option'); o.value = String(h); o.textContent = h + ' 小時（自訂）';
+    const o = document.createElement('option'); o.value = String(h); o.textContent = fmtGoal(h) + ' · 自訂';
     goalSelect.appendChild(o); goalSelect.value = String(h);
   }
 }
@@ -865,7 +874,7 @@ function updateDisplay() {
     endBtn.disabled = true;
     startBtn.textContent = '開始斷食';
     elapsedText.textContent = '00:00:00';
-    goalText.textContent = '目標 ' + goalHours + ' 小時';
+    goalText.textContent = '目標 ' + fmtGoal(goalHours);
     ringBg.style.setProperty('--pct', 0);
     startLabel.textContent = '—';
     endLabel.textContent = '—';
@@ -881,15 +890,15 @@ function updateDisplay() {
   const elapsedHours = elapsedSec / 3600;
   const pct = Math.min(100, (elapsedHours / goalHours) * 100);
 
-  pctText.textContent = '已過 ' + pct.toFixed(0) + '%';
+  pctText.textContent = '已過 ' + pct.toFixed(0) + '%・第 ' + (Math.floor(elapsedHours / 24) + 1) + ' 天';
   endBtn.disabled = false;
   startBtn.textContent = '重新開始';
   document.body.style.setProperty('--phase', phaseColor(elapsedHours));
   elapsedText.textContent = fmtHMS(elapsedSec);
   const remainH = goalHours - elapsedHours;
   goalText.textContent = remainH > 0
-    ? '目標 ' + goalHours + ' 小時，還剩 ' + (remainH >= 24 ? Math.floor(remainH / 24) + ' 天 ' + Math.floor(remainH % 24) + ' 小時' : Math.floor(remainH) + ' 小時 ' + Math.floor((remainH % 1) * 60) + ' 分')
-    : '目標 ' + goalHours + ' 小時，已達成';
+    ? '目標 ' + fmtGoal(goalHours) + '，還剩 ' + (remainH >= 24 ? fmtHD(remainH) : Math.floor(remainH) + ' 小時 ' + Math.floor((remainH % 1) * 60) + ' 分')
+    : '目標 ' + fmtGoal(goalHours) + '，已達成';
   const scaleMax = Math.max(goalHours, ...MILESTONES.filter(m => m <= goalHours * 1.4));
   ringBg.style.setProperty('--pct', Math.min(100, (elapsedHours / scaleMax) * 100));
   ringWrap.setAttribute('aria-valuenow', pct.toFixed(0));
@@ -898,7 +907,7 @@ function updateDisplay() {
   endLabel.textContent = fmtDateShort(state.startTime + goalHours * 3600 * 1000);
 
   const phase = getPhase(elapsedHours);
-  phaseTitle.textContent = `${phase.title}（第 ${Math.floor(elapsedHours)} 小時）`;
+  phaseTitle.textContent = `${phase.title}（已 ${fmtHD(elapsedHours)}）`;
   phaseDesc.textContent = phase.desc;
 
   renderBadges(elapsedHours, goalHours);
@@ -910,7 +919,7 @@ function checkMilestoneNotify(elapsedHours) {
   MILESTONES.forEach((m) => {
     if (elapsedHours >= m && !state.notified[m]) {
       state.notified[m] = true; changed = true;
-      notify(`✅ 已達成 ${m} 小時！${getPhase(m).title}`);
+      notify(`✅ 已達成 ${fmtGoal(m)}！${getPhase(m).title}`);
       showCelebration();
       playSound();
     }
@@ -918,7 +927,7 @@ function checkMilestoneNotify(elapsedHours) {
   const goal = state.goalHours || 24;
   if (elapsedHours >= goal && !state.goalNotified) {
     state.goalNotified = true; changed = true;
-    notify(`🎯 已達成目標 ${goal} 小時！可以結束斷食了`);
+    notify(`🎯 已達成目標 ${fmtGoal(goal)}！可以結束斷食了`);
     showCelebration();
     playSound();
   }
@@ -1505,15 +1514,18 @@ function renderFastingStats() {
   const totalMs = monthFasts.reduce((sum, f) => sum + f.durationMs, 0);
   const totalDays = (totalMs / (24 * 3600 * 1000)).toFixed(1);
   
-  document.getElementById('maxFastLength').textContent = fastingHistory.length ? maxLength : '—';
-  document.getElementById('avgFastLength').textContent = fastingHistory.length ? avgLength : '—';
-  document.getElementById('totalFastTime').textContent = fastingHistory.length ? totalDays : '—';
+  const has = fastingHistory.length > 0;
+  document.getElementById('maxFastLength').textContent = has ? fmtHD(maxLength) : '—';
+  document.getElementById('avgFastLength').textContent = has ? fmtHD(avgLength) : '—';
+  document.getElementById('maxFastUnit').textContent = has ? maxLength + ' 小時' : '小時';
+  document.getElementById('avgFastUnit').textContent = has ? avgLength + ' 小時' : '小時';
+  document.getElementById('totalFastTime').textContent = has ? fmtHD(totalMs / 3600000) : '—';
+  document.getElementById('totalFastUnit').textContent = has ? (totalMs / 3600000).toFixed(1) + ' 小時' : '小時';
 }
 
 function fmtDurationHours(ms) {
-  const totalHours = ms / 3600000;
-  if (totalHours >= 24) return `${(totalHours / 24).toFixed(1)} 天`;
-  return `${totalHours.toFixed(1)} 小時`;
+  const h = ms / 3600000;
+  return h >= 24 ? fmtHD(h) : `${h.toFixed(1)} 小時`;
 }
 
 function renderFastingHistory() {
@@ -1549,7 +1561,7 @@ function renderFastingHistory() {
 
     const meta = document.createElement('div');
     meta.className = 'history-meta';
-    meta.textContent = `目標 ${entry.goalHours} 小時 · ${entry.goalHours <= entry.durationHours ? '達成目標' : '未達目標'}`;
+    meta.textContent = `目標 ${fmtGoal(entry.goalHours)} · ${entry.goalHours <= entry.durationHours ? '達成目標' : '未達目標'}`;
     item.appendChild(meta);
     
     if (entry.note) {
@@ -1679,6 +1691,7 @@ applyTheme();
 nosaveBanner.hidden = consented;
 if (!consented) showConsentModal();
 
+goalSelect.querySelectorAll('option').forEach(o => { o.textContent = fmtGoal(Number(o.value)); });
 setGoalSelect(state.goalHours || 120);
 startInput.value = toLocalDatetimeInputValue(state.startTime || Date.now());
 updateOnlineStatus();

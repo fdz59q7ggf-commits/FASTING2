@@ -150,7 +150,8 @@
     width: 100%; min-width: 0; height: 44px; padding: 0 12px;
     background: var(--surface-2); color: var(--text);
     border: 1px solid var(--line); border-radius: var(--r-ctl);
-    font-size: 15px; appearance: none; -webkit-appearance: none;
+    /* iOS Safari 會在聚焦字級小於 16px 的輸入框時自動放大畫面且不會縮回，所以一律至少 16px */
+    font-size: 16px; appearance: none; -webkit-appearance: none;
   }
   textarea { height: auto; min-height: 88px; padding: 10px 12px; line-height: 1.5; resize: vertical; }
   input::placeholder, textarea::placeholder { color: var(--text-faint); opacity: 0.7; }
@@ -159,7 +160,7 @@
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2366747d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 12px center;
   }
-  input[type="datetime-local"] { font-size: 13px; padding: 0 6px 0 10px; }
+  input[type="datetime-local"] { padding: 0 6px 0 10px; }
   input[type="datetime-local"]::-webkit-calendar-picker-indicator { margin-left: 2px; padding: 0; }
   button { font-family: var(--sans); border: 0; cursor: pointer; font-weight: 600; font-size: 15px; transition: background 0.2s var(--ease), border-color 0.2s var(--ease), opacity 0.2s; }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -224,7 +225,7 @@
 
   .settings-row { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; font-size: 13px; color: var(--text-dim); padding-top: 12px; border-top: 1px solid var(--line); }
   .settings-row label { display: flex; align-items: center; gap: 8px; }
-  .settings-row select { width: auto; height: 34px; font-size: 13px; padding-left: 10px; }
+  .settings-row select { width: auto; height: 38px; font-size: 16px; padding-left: 10px; }
   .settings-row button { height: 34px; padding: 0 12px; font-size: 13px; background: transparent; border: 1px solid var(--line); border-radius: var(--r-ctl); color: var(--text-dim); }
   .settings-row [hidden] { display: none; }
   .notify-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; width: 100%; }

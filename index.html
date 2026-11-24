@@ -258,6 +258,7 @@
   .history-actions { display: flex; gap: 8px; margin-top: 6px; }
   .history-actions button { background: transparent; border: 1px solid var(--line); color: var(--text-dim); border-radius: 8px; height: 30px; padding: 0 12px; font-size: 12px; }
 
+  .range-title { font-size: 15px; font-weight: 700; margin: 8px 0 4px; flex-shrink: 0; }
   .range-row { display: flex; gap: 4px; flex-shrink: 0; margin: 4px 0 12px; padding: 4px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; }
   .range-row button { flex: 1; height: 34px; font-size: 13px; border-radius: 999px; background: transparent; color: var(--text-dim); }
   .range-row button.active { background: var(--text); color: var(--surface); }
@@ -499,14 +500,15 @@
         </div>
       </div>
     </section>
-    <div class="stats-summary" id="statsSummary"></div>
     <section class="card history-card">
       <h2 class="section-title">斷食歷史</h2>
       <div class="history-list" id="historyList"></div>
     </section>
-    <div class="range-row" id="rangeRow" role="group" aria-label="圖表範圍">
-      <button data-range="7">7 天</button><button data-range="30">30 天</button><button data-range="0" class="active">全部</button>
+    <h2 class="range-title">生理數據</h2>
+    <div class="range-row" id="rangeRow" role="group" aria-label="數據統計與圖表的時間範圍">
+      <button data-range="7" aria-pressed="false">7 天</button><button data-range="30" aria-pressed="false">30 天</button><button data-range="0" class="active" aria-pressed="true">全部</button>
     </div>
+    <div class="stats-summary" id="statsSummary"></div>
     <div class="chart-grid" id="chartGrid"></div>
     <p class="disclaimer">
       各階段的身體變化說明僅供一般參考，並非醫療建議。超過 24–48 小時的長時間斷食，建議在醫師或營養師監督下進行。有糖尿病、低血糖、心血管疾病、服用藥物、懷孕或曾有飲食失調經驗者，請先諮詢專業醫療人員。斷食期間若感到頭暈、心悸或極度不適，請立即停止並補充飲食。
@@ -645,12 +647,28 @@ function persistable() { const { consent, ...rest } = state; return rest; }
 function saveState() { try { if (consented) localStorage.setItem(STATE_KEY, JSON.stringify(persistable())); } catch (e) {} }
 function saveBio() { try { if (consented) localStorage.setItem(BIO_KEY, JSON.stringify(bioRecords)); } catch (e) {} }
 function saveFastingHistory() { try { if (consented) localStorage.setItem(FASTING_HISTORY_KEY, JSON.stringify(fastingHistory)); } catch (e) {} }
+function fmtLocalDateTime(ms) {
+  const d = new Date(ms), pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
 function exportCsv() {
-  const q = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
-  const f = (ms) => new Date(ms).toISOString();
-  let csv = '\ufeff類型,開始/時間,結束,時數,目標時數,體重kg,心跳bpm,血糖mg/dL,收縮壓,舒張壓,筆記/症狀\n';
-  fastingHistory.forEach(h => { csv += ['斷食', f(h.startTime), f(h.endTime), h.durationHours.toFixed(2), h.goalHours, '', '', '', '', '', h.note].map(q).join(',') + '\n'; });
-  bioRecords.forEach(r => { csv += ['數據', f(r.time), '', '', '', r.weight, r.hr, r.glucose, r.sys, r.dia, (r.symptoms || []).map(k => SYMPTOM_LABEL[k]).join('、')].map(q).join(',') + '\n'; });
+  // 以 = + - @ 開頭的文字在 Excel 會被當成公式執行，前面加 ' 避免
+  const q = (v) => {
+    let t = String(v == null ? '' : v);
+    if (typeof v === 'string' && /^[=+\-@\t\r]/.test(t)) t = "'" + t;
+    return '"' + t.replace(/"/g, '""') + '"';
+  };
+  const f = fmtLocalDateTime;
+  const header = ['類型', '開始/時間（本地時間）', '結束（本地時間）', '時數', '目標時數',
+    '體重' + unitLabel('weight'), '心跳bpm', '血糖' + unitLabel('glucose'), '收縮壓', '舒張壓', '筆記/症狀'];
+  let csv = '\ufeff' + header.join(',') + '\n';
+  [...fastingHistory].sort((a, b) => a.startTime - b.startTime).forEach(h => {
+    csv += ['斷食', f(h.startTime), f(h.endTime), h.durationHours.toFixed(2), h.goalHours, '', '', '', '', '', h.note].map(q).join(',') + '\n';
+  });
+  [...bioRecords].sort((a, b) => a.time - b.time).forEach(r => {
+    csv += ['數據', f(r.time), '', '', '', dispVal('weight', r.weight), r.hr, dispVal('glucose', r.glucose), r.sys, r.dia,
+      (r.symptoms || []).map(k => SYMPTOM_LABEL[k]).join('、')].map(q).join(',') + '\n';
+  });
   const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
   const a = document.createElement('a'); a.href = url; a.download = 'fasting-data-' + new Date().toISOString().slice(0, 10) + '.csv';
   document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
@@ -949,9 +967,12 @@ function fmtHD(h) {
 }
 function fmtGoal(h) { return h >= 24 ? h + ' 小時（' + fmtHD(h) + '）' : h + ' 小時'; }
 function setGoalSelect(h) {
+  // 只保留目前這一個自訂選項，避免每次自訂都多一個
+  goalSelect.querySelectorAll('option[data-custom]').forEach(o => { if (o.value !== String(h)) o.remove(); });
   goalSelect.value = String(h);
   if (goalSelect.value !== String(h)) {
     const o = document.createElement('option'); o.value = String(h); o.textContent = fmtGoal(h) + ' · 自訂';
+    o.dataset.custom = '1';
     goalSelect.appendChild(o); goalSelect.value = String(h);
   }
 }
@@ -1243,9 +1264,11 @@ goalSelect.addEventListener('change', () => {
 /* ---------------- 生理數據記錄 ---------------- */
 function dangerWarnings(r) {
   const w = [];
-  if (r.glucose && r.glucose < 54) w.push('血糖 < 54 mg/dL：嚴重低血糖');
-  else if (r.glucose && r.glucose < 70) w.push('血糖 < 70 mg/dL：偏低');
-  if (r.glucose && r.glucose > 250) w.push('血糖 > 250 mg/dL：偏高');
+  // 門檻以 mg/dL 判斷（資料一律以 mg/dL 儲存），文字依使用者選的單位顯示
+  const g = (mgdl) => (settings.glucoseUnit === 'mmol' ? (mgdl / G_FACTOR).toFixed(1) : mgdl) + ' ' + unitLabel('glucose');
+  if (r.glucose && r.glucose < 54) w.push('血糖 < ' + g(54) + '：嚴重低血糖');
+  else if (r.glucose && r.glucose < 70) w.push('血糖 < ' + g(70) + '：偏低');
+  if (r.glucose && r.glucose > 250) w.push('血糖 > ' + g(250) + '：偏高');
   if (r.hr && r.hr > 120) w.push('心跳 > 120 bpm：過快');
   if (r.hr && r.hr < 45) w.push('心跳 < 45 bpm：偏慢');
   if (r.sys && r.dia && (r.sys < 90 || r.dia < 60)) w.push('血壓偏低（< 90/60）');
@@ -1422,7 +1445,7 @@ document.getElementById('weightUnitSel').addEventListener('change', (e) => { set
 document.getElementById('hydrateSel').addEventListener('change', (e) => { settings.hydrateMin = Number(e.target.value); saveSettings(); state.lastHydrate = Date.now(); saveState(); });
 document.querySelectorAll('#rangeRow button').forEach(b => b.addEventListener('click', () => {
   chartRange = Number(b.dataset.range);
-  document.querySelectorAll('#rangeRow button').forEach(x => x.classList.toggle('active', x === b));
+  document.querySelectorAll('#rangeRow button').forEach(x => { x.classList.toggle('active', x === b); x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
   renderCharts();
 }));
 let deferredInstall = null;
@@ -1516,6 +1539,10 @@ function attachChart(card, times, seriesList, fmtY, tipText) {
   show(times.length - 1);
 }
 
+function chartEmptyText(n) {
+  if (n === 1) return chartRange ? '這段期間只有一筆，再記錄一筆或切換到「全部」即可看到趨勢' : '再記錄一筆即可畫出趨勢線';
+  return chartRange ? '最近 ' + chartRange + ' 天內沒有資料' : '尚無資料，記錄兩筆以上即可看到趨勢';
+}
 function buildChartCard(label, unit, records, valueKey, color, latestFormatter) {
   const filtered = records.filter(r => r[valueKey] != null && inRange(r)).sort((a, b) => a.time - b.time).slice(-MAX_POINTS);
   const card = document.createElement('div');
@@ -1543,7 +1570,7 @@ function buildChartCard(label, unit, records, valueKey, color, latestFormatter) 
   if (filtered.length < 2) {
     const empty = document.createElement('div');
     empty.className = 'chart-empty';
-    empty.textContent = filtered.length === 0 ? '尚無資料，記錄兩筆以上即可看到趨勢' : '再記錄一筆即可畫出趨勢線';
+    empty.textContent = chartEmptyText(filtered.length);
     card.appendChild(empty);
     return card;
   }
@@ -1586,7 +1613,7 @@ function buildBpChartCard(records) {
   if (filtered.length < 2) {
     const empty = document.createElement('div');
     empty.className = 'chart-empty';
-    empty.textContent = filtered.length === 0 ? '尚無資料，記錄兩筆以上即可看到趨勢' : '再記錄一筆即可畫出趨勢線';
+    empty.textContent = chartEmptyText(filtered.length);
     card.appendChild(empty);
     return card;
   }
@@ -1656,12 +1683,21 @@ function renderStatsSummary() {
   
   renderFastingStats();
   if (bioRecords.length === 0) return;
-  
-  statsSummary.appendChild(buildStatsCard('體重', unitLabel('weight'), bioRecords, 'weight', '⚖'));
-  statsSummary.appendChild(buildStatsCard('心率', 'bpm', bioRecords, 'hr', '♥'));
-  statsSummary.appendChild(buildStatsCard('血糖', unitLabel('glucose'), bioRecords, 'glucose', '◆'));
-  
-  const bpFiltered = bioRecords.filter(r => r.sys != null && r.dia != null).sort((a, b) => a.time - b.time);
+  // 與下方趨勢圖使用同一個時間範圍
+  const recs = bioRecords.filter(inRange);
+  if (recs.length === 0) {
+    const card = document.createElement('div');
+    card.className = 'stats-card wide';
+    card.innerHTML = '<div class="stats-change">最近 ' + chartRange + ' 天內沒有記錄，可切換到「全部」查看。</div>';
+    statsSummary.appendChild(card);
+    return;
+  }
+
+  statsSummary.appendChild(buildStatsCard('體重', unitLabel('weight'), recs, 'weight', '⚖'));
+  statsSummary.appendChild(buildStatsCard('心率', 'bpm', recs, 'hr', '♥'));
+  statsSummary.appendChild(buildStatsCard('血糖', unitLabel('glucose'), recs, 'glucose', '◆'));
+
+  const bpFiltered = recs.filter(r => r.sys != null && r.dia != null).sort((a, b) => a.time - b.time);
   if (bpFiltered.length > 0) {
     const sysValues = bpFiltered.map(r => r.sys);
     const diaValues = bpFiltered.map(r => r.dia);
@@ -1690,7 +1726,7 @@ function renderStatsSummary() {
   }
 
   const counts = {};
-  bioRecords.forEach(r => (r.symptoms || []).forEach(k => { counts[k] = (counts[k] || 0) + 1; }));
+  recs.forEach(r => (r.symptoms || []).forEach(k => { counts[k] = (counts[k] || 0) + 1; }));
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1]);
   if (top.length) {
     const card = document.createElement('div');
@@ -1844,6 +1880,40 @@ function renderCharts() {
   chartGrid.appendChild(buildChartCard('血糖', unitLabel('glucose'), bioRecords, 'glucose', 'var(--c-glucose)', r => dispVal('glucose', r.glucose)));
   chartGrid.appendChild(buildBpChartCard(bioRecords));
 }
+
+/* ---------------- 多分頁同步 ---------------- */
+// 其他分頁寫入 localStorage 時同步更新，避免這個分頁用舊資料覆蓋回去
+function parseStored(key, fallback) { try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch (e) { return fallback; } }
+window.addEventListener('storage', (e) => {
+  if (e.storageArea && e.storageArea !== localStorage) return;
+  const all = e.key === null; // localStorage.clear()
+  if (all || e.key === CONSENT_KEY) {
+    consented = lsGet(CONSENT_KEY) === '1';
+    nosaveBanner.hidden = consented;
+  }
+  if (all || e.key === STATE_KEY) {
+    const st = parseStored(STATE_KEY, null);
+    state = Object.assign({ running: false, startTime: null, goalHours: 120, notified: {}, goalNotified: false, lastHydrate: null }, st && typeof st === 'object' ? st : {});
+    if (!state.notified || typeof state.notified !== 'object') state.notified = {};
+    if (!state.running) state.startTime = null;
+    setGoalSelect(Number(state.goalHours) || 120);
+    lastBadgeKey = '';
+    if (state.running) requestWakeLock(); else releaseWakeLock();
+    if (!state.running && !startInputManuallyEdited) startInput.value = toLocalDatetimeInputValue(Date.now());
+    updateDisplay();
+  }
+  if (all || e.key === BIO_KEY) { bioRecords = sanitizeBio(parseStored(BIO_KEY, [])); renderBioList(); renderCharts(); }
+  if (all || e.key === FASTING_HISTORY_KEY) { fastingHistory = sanitizeHistory(parseStored(FASTING_HISTORY_KEY, [])); renderCharts(); }
+  if (all || e.key === SETTINGS_KEY) {
+    settings = { glucoseUnit: 'mgdl', weightUnit: 'kg', hydrateMin: 0 };
+    loadSettings(); applyUnits(); renderBioList(); renderCharts();
+  }
+  if (all || e.key === THEME_KEY) {
+    const t = lsGet(THEME_KEY);
+    isDarkMode = t ? t === 'dark' : !!(darkMql && darkMql.matches);
+    applyTheme();
+  }
+});
 
 /* ---------------- 離線狀態 ---------------- */
 function updateOnlineStatus() { offlineBadge.classList.toggle('show', !navigator.onLine); }

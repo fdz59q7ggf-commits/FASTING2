@@ -339,7 +339,7 @@
       </div>
     </header>
     <div class="offline-badge" id="offlineBadge">離線中，計時照常進行</div>
-    <div class="nosave-banner" id="nosaveBanner" hidden>尚未同意隱私說明，資料不會儲存，重新整理後會消失。</div>
+    <div class="nosave-banner" id="nosaveBanner" hidden>尚未同意隱私說明，新增或修改的資料不會儲存，重新整理後會消失。</div>
 
     <div class="card home-main-card">
       <div class="setup-row">
@@ -543,6 +543,12 @@ const MILESTONES = [12, 24, 36, 48, 72, 96, 120, 144, 168, 192, 216, 240, 264, 2
 const STATE_KEY = 'fastTimerState_v1';
 const BIO_KEY = 'fastBiometrics_v2';
 const FASTING_HISTORY_KEY = 'fastingHistory_v1';
+const LEGACY_BIO_KEY = 'fastBiometrics_v1';
+const CONSENT_KEY = 'fasting_consent_v1';
+// 存放斷食與生理數據的 key（含舊版），刪除時要一併移除，否則重新整理時會被搬回來
+const DATA_KEYS = [STATE_KEY, BIO_KEY, LEGACY_BIO_KEY, FASTING_HISTORY_KEY];
+function hasStoredData() { return DATA_KEYS.some(k => lsGet(k) != null); }
+function removeStoredData() { DATA_KEYS.forEach(k => { try { localStorage.removeItem(k); } catch (e) {} }); }
 
 let state = { running: false, startTime: null, goalHours: 120, notified: {}, goalNotified: false };
 let bioRecords = [];
@@ -554,7 +560,7 @@ function loadState() {
     const raw2 = localStorage.getItem(BIO_KEY);
     if (raw2) { bioRecords = JSON.parse(raw2); }
     else {
-      const old = localStorage.getItem('fastBiometrics_v1');
+      const old = localStorage.getItem(LEGACY_BIO_KEY);
       if (old) bioRecords = JSON.parse(old).map(r => ({ ...r, hr: r.hr || null }));
     }
   } catch (e) {}
@@ -565,7 +571,7 @@ function loadState() {
 
   // 同意旗標（不存進 state / 匯出檔）
   consented = false;
-  try { consented = localStorage.getItem('fasting_consent_v1') === '1'; } catch (e) {}
+  try { consented = localStorage.getItem(CONSENT_KEY) === '1'; } catch (e) {}
   if (!state.notified || typeof state.notified !== 'object') state.notified = {};
   // 舊版進行中的斷食沒有通知紀錄：已過的里程碑視為已通知，避免重播
   if (state.running && state.startTime && !Object.keys(state.notified).length) {
@@ -864,9 +870,16 @@ function renderBadges(elapsedHours, goalHours) {
 }
 
 /* ---------------- 主計時顯示 ---------------- */
+let lastPresetGoal = null;
+function syncPresetActive(goalHours) {
+  if (goalHours === lastPresetGoal) return;
+  lastPresetGoal = goalHours;
+  document.querySelectorAll('.preset-btn[data-hours]').forEach(b => b.classList.toggle('active', Number(b.dataset.hours) === goalHours));
+}
 function updateDisplay() {
   const goalHours = Number(goalSelect.value) || 24;
   state.goalHours = goalHours;
+  syncPresetActive(goalHours);
 
   if (!state.running || !state.startTime) {
     pctText.textContent = '已過 0%';
@@ -915,23 +928,23 @@ function updateDisplay() {
 }
 
 function checkMilestoneNotify(elapsedHours) {
-  let changed = false;
+  // 頁面在背景或休眠一段時間後回來，可能一次跨過多個里程碑：全部標記為已通知，但只提示最新的一個
+  let latest = null;
   MILESTONES.forEach((m) => {
-    if (elapsedHours >= m && !state.notified[m]) {
-      state.notified[m] = true; changed = true;
-      notify(`✅ 已達成 ${fmtGoal(m)}！${getPhase(m).title}`);
-      showCelebration();
-      playSound();
-    }
+    if (elapsedHours >= m && !state.notified[m]) { state.notified[m] = true; latest = m; }
   });
   const goal = state.goalHours || 24;
-  if (elapsedHours >= goal && !state.goalNotified) {
-    state.goalNotified = true; changed = true;
-    notify(`🎯 已達成目標 ${fmtGoal(goal)}！可以結束斷食了`);
-    showCelebration();
-    playSound();
-  }
-  if (changed) saveState();
+  const goalReached = elapsedHours >= goal && !state.goalNotified;
+  if (goalReached) state.goalNotified = true;
+  if (latest == null && !goalReached) return;
+
+  const msgs = [];
+  if (goalReached) msgs.push(`🎯 已達成目標 ${fmtGoal(goal)}！可以結束斷食了`);
+  if (latest != null && !(goalReached && latest === goal)) msgs.push(`✅ 已達成 ${fmtGoal(latest)}！${getPhase(latest).title}`);
+  notify(msgs.join('\n'));
+  showCelebration();
+  playSound();
+  saveState();
 }
 
 function showCelebration() {
@@ -1179,7 +1192,8 @@ bioAddBtn.addEventListener('click', () => {
 const themeToggle = document.getElementById('themeToggle');
 const presetBtns = document.querySelectorAll('.preset-btn[data-hours]');
 const THEME_KEY = 'fastTimerTheme_v1';
-let isDarkMode = lsGet(THEME_KEY) ? lsGet(THEME_KEY) === 'dark' : !!(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+const darkMql = window.matchMedia ? matchMedia('(prefers-color-scheme: dark)') : null;
+let isDarkMode = lsGet(THEME_KEY) ? lsGet(THEME_KEY) === 'dark' : !!(darkMql && darkMql.matches);
 
 const ICON_SUN = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
 const ICON_MOON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>';
@@ -1188,13 +1202,19 @@ function applyTheme() {
   themeToggle.innerHTML = isDarkMode ? ICON_SUN : ICON_MOON;
   document.querySelector('meta[name="theme-color"]').setAttribute('content', isDarkMode ? '#0c1317' : '#eef2ef');
   themeToggle.classList.toggle('active', isDarkMode);
-  lsSet(THEME_KEY, isDarkMode ? 'dark' : 'light');
 }
 
 themeToggle.addEventListener('click', () => {
   isDarkMode = !isDarkMode;
+  lsSet(THEME_KEY, isDarkMode ? 'dark' : 'light');
   applyTheme();
 });
+// 使用者沒手動選過主題時，跟著系統深淺色即時切換
+if (darkMql) {
+  const onSystemTheme = (e) => { if (!lsGet(THEME_KEY)) { isDarkMode = e.matches; applyTheme(); } };
+  if (darkMql.addEventListener) darkMql.addEventListener('change', onSystemTheme);
+  else if (darkMql.addListener) darkMql.addListener(onSystemTheme);
+}
 
 presetBtns.forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1204,7 +1224,6 @@ presetBtns.forEach(btn => {
     onGoalChanged();
     saveState();
     updateDisplay();
-    presetBtns.forEach(b => b.classList.toggle('active', b === btn));
   });
 });
 
@@ -1255,6 +1274,8 @@ clearDataBtn.addEventListener('click', () => {
     if (confirm('再次確認：刪除所有數據？')) {
       bioRecords = [];
       fastingHistory = [];
+      // 未同意時 saveBio() 不會寫入，必須直接移除；舊版 key 也要刪，否則重新整理會被搬回來
+      [BIO_KEY, LEGACY_BIO_KEY, FASTING_HISTORY_KEY].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
       saveBio();
       saveFastingHistory();
       renderBioList();
@@ -1639,16 +1660,25 @@ function showConsentModal() {
   document.body.appendChild(overlay);
   document.getElementById('consentAccept').addEventListener('click', () => {
     consented = true;
-    lsSet('fasting_consent_v1', '1');
+    lsSet(CONSENT_KEY, '1');
     overlay.remove();
     nosaveBanner.hidden = true;
     saveState(); saveBio(); saveFastingHistory();
   });
   document.getElementById('consentDecline').addEventListener('click', () => {
     consented = false;
-    try { localStorage.removeItem('fasting_consent_v1'); } catch (e) {}
+    try { localStorage.removeItem(CONSENT_KEY); } catch (e) {}
     overlay.remove();
     nosaveBanner.hidden = false;
+    // 先前同意時存下的資料仍在本機，詢問是否一併刪除
+    if (hasStoredData() && confirm('本機仍保存著先前的斷食紀錄與生理數據。\n要一併刪除嗎？\n\n按「確定」＝刪除\n按「取消」＝保留（但之後的變更不會儲存）')) {
+      removeStoredData();
+      bioRecords = [];
+      fastingHistory = [];
+      renderBioList();
+      renderCharts();
+      showToast('已刪除本機儲存的資料');
+    }
   });
 }
 
@@ -1656,11 +1686,10 @@ document.getElementById('privacyBtn').addEventListener('click', () => showConsen
 wipeDataBtn.addEventListener('click', () => {
   if (!confirm('確定要刪除所有本機資料？此操作無法還原')) return;
   try {
-    localStorage.removeItem(STATE_KEY);
-    localStorage.removeItem(BIO_KEY);
-    localStorage.removeItem(FASTING_HISTORY_KEY);
-    localStorage.removeItem('fasting_consent_v1');
+    removeStoredData();
+    localStorage.removeItem(CONSENT_KEY);
     localStorage.removeItem(THEME_KEY);
+    localStorage.removeItem(SETTINGS_KEY);
   } catch (e) {}
   alert('本機資料已刪除，頁面將重新整理。');
   location.reload();

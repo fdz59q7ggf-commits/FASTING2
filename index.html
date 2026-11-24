@@ -140,13 +140,14 @@
   /* controls */
   .field { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
   .field label { font-size: 13px; font-weight: 600; color: var(--text-dim); }
-  input[type="number"], input[type="datetime-local"], select {
+  input[type="number"], input[type="datetime-local"], input[type="text"], select, textarea {
     width: 100%; min-width: 0; height: 44px; padding: 0 12px;
     background: var(--surface-2); color: var(--text);
     border: 1px solid var(--line); border-radius: var(--r-ctl);
     font-size: 15px; appearance: none; -webkit-appearance: none;
   }
-  input::placeholder { color: var(--text-faint); opacity: 0.7; }
+  textarea { height: auto; min-height: 88px; padding: 10px 12px; line-height: 1.5; resize: vertical; }
+  input::placeholder, textarea::placeholder { color: var(--text-faint); opacity: 0.7; }
   select {
     padding-right: 30px;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2366747d' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
@@ -278,7 +279,7 @@
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip { height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--text-dim); font-size: 13px; }
   .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--surface); }
-  .bio-form .chips-field { grid-column: 1 / -1; }
+  .bio-form .chips-field, .bio-form .full { grid-column: 1 / -1; }
   .stats-card.wide { grid-column: 1 / -1; }
   .disclaimer { font-size: 12px; color: var(--text-faint); line-height: 1.7; margin: 8px 0 0; flex-shrink: 0; }
 
@@ -308,16 +309,23 @@
   }
   @keyframes celebrate-pop { 0% { transform: scale(0.4); opacity: 1; } 100% { transform: scale(1.3); opacity: 0; } }
 
-  .consent-overlay { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; z-index: 10010; background: rgba(8, 16, 20, 0.5); padding: 16px; }
-  @media (min-width: 620px) { .consent-overlay { align-items: center; } }
-  .consent-modal { width: 100%; max-width: 440px; background: var(--surface); border-radius: 20px; padding: 20px; color: var(--text); border: 1px solid var(--line); }
-  .consent-modal h3 { margin: 0 0 8px; font-size: 18px; }
-  .consent-modal p { margin: 8px 0; font-size: 14px; line-height: 1.65; color: var(--text-dim); }
-  .consent-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
-  .consent-actions button { height: 44px; padding: 0 18px; border-radius: var(--r-ctl); }
-  .consent-accept { background: var(--accent); color: var(--accent-ink); }
-  .consent-decline { background: transparent; border: 1px solid var(--line); color: var(--text); }
-  .toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + 20px); transform: translateX(-50%); background: var(--text); color: var(--surface); padding: 12px 16px; border-radius: var(--r-ctl); font-size: 14px; z-index: 300; width: max-content; max-width: 86vw; text-align: center; line-height: 1.5; }
+  .modal-overlay { position: fixed; inset: 0; display: flex; align-items: flex-end; justify-content: center; z-index: 10010; background: rgba(8, 16, 20, 0.5); padding: 16px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+  @media (min-width: 620px) { .modal-overlay { align-items: center; } }
+  .modal { width: 100%; max-width: 440px; max-height: calc(100svh - 32px); overflow-y: auto; background: var(--surface); border-radius: 20px; padding: 20px; color: var(--text); border: 1px solid var(--line); }
+  .modal h3 { margin: 0 0 8px; font-size: 18px; }
+  .modal p { margin: 8px 0; font-size: 14px; line-height: 1.65; color: var(--text-dim); }
+  .modal .modal-msg { white-space: pre-line; }
+  .modal-form { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+  .modal-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .modal-actions button { height: 44px; padding: 0 18px; border-radius: var(--r-ctl); }
+  .modal-btn-primary { background: var(--accent); color: var(--accent-ink); }
+  .modal-btn-secondary { background: transparent; border: 1px solid var(--line); color: var(--text); }
+  .modal-btn-danger { background: var(--danger); color: var(--surface); }
+  .form-error { color: var(--danger); font-size: 13px; font-weight: 600; line-height: 1.5; }
+  .form-error:empty { display: none; }
+  .bio-form .form-error { grid-column: 1 / -1; }
+  .toast { position: fixed; left: 50%; bottom: calc(var(--nav-h) + 20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--text); color: var(--surface); padding: 10px 12px 10px 16px; border-radius: var(--r-ctl); font-size: 14px; z-index: 300; width: max-content; max-width: 86vw; line-height: 1.5; display: flex; align-items: center; gap: 12px; }
+  .toast-action { flex-shrink: 0; height: 32px; padding: 0 12px; border-radius: 8px; background: transparent; border: 1px solid currentColor; color: var(--surface); font-size: 13px; }
 
   @media (prefers-reduced-motion: reduce) {
     .pulse-dot, .celebration-circle { animation: none; }
@@ -393,7 +401,7 @@
 
       <div class="controls">
         <button class="btn-primary" id="startBtn">開始斷食</button>
-        <button class="btn-secondary" id="endBtn">結束斷食</button>
+        <button class="btn-secondary" id="endBtn" hidden>結束斷食</button>
       </div>
 
       <div class="startend">
@@ -441,6 +449,11 @@
           <label>症狀（可複選）</label>
           <div class="chips" id="symptomChips"></div>
         </div>
+        <div class="field full">
+          <label for="bioTimeInput">記錄時間（留空＝現在，可補登過去的數據）</label>
+          <input type="datetime-local" id="bioTimeInput" />
+        </div>
+        <div class="form-error" id="bioError" role="alert"></div>
         <button class="bio-add-btn" id="bioAddBtn">新增記錄</button>
       </div>
       <div class="settings-row">
@@ -662,21 +675,26 @@ function exportCurrentData() {
   URL.revokeObjectURL(url);
 }
 
-function applyImportedData(data) {
-  if (!data || typeof data !== 'object') {
-    throw new Error('匯入資料格式錯誤');
-  }
+async function applyImportedData(data) {
+  if (!data || typeof data !== 'object') throw new Error('檔案格式不是有效的斷食資料');
+  const incBio = Array.isArray(data.bioRecords) ? sanitizeBio(data.bioRecords) : null;
+  const incHist = Array.isArray(data.fastingHistory) ? sanitizeHistory(data.fastingHistory) : null;
+  if (!incBio && !incHist) throw new Error('檔案內找不到斷食紀錄或生理數據');
 
+  const r = await openDialog({
+    title: '匯入資料',
+    message: `檔案內有 ${incHist ? incHist.length : 0} 筆斷食紀錄、${incBio ? incBio.length : 0} 筆生理數據。\n\n合併：保留目前資料，只加入新的（略過重複）。\n取代全部：刪除目前所有資料，改用檔案內容（含進行中的斷食）。`,
+    buttons: [{ label: '取消', value: null, kind: 'secondary' }, { label: '取代全部', value: 'replace', kind: 'danger' }, { label: '合併', value: 'merge', kind: 'primary' }],
+  });
+  if (!r.action) return;
+  const replaceAll = r.action === 'replace';
+
+  // 匯入前的快照，供「復原」使用
+  const snapshot = { bio: bioRecords, hist: fastingHistory, state: JSON.parse(JSON.stringify(state)) };
+  const beforeBio = bioRecords.length, beforeHist = fastingHistory.length;
   const mergeById = (cur, inc) => { const ids = new Set(cur.map(x => x.id)); return cur.concat(inc.filter(x => !ids.has(x.id))); };
-  const replaceAll = confirm('匯入方式：\n按「確定」＝取代目前所有資料\n按「取消」＝與目前資料合併（略過重複）');
-  if (Array.isArray(data.bioRecords)) {
-    const inc = sanitizeBio(data.bioRecords);
-    bioRecords = replaceAll ? inc : mergeById(bioRecords, inc);
-  }
-  if (Array.isArray(data.fastingHistory)) {
-    const inc = sanitizeHistory(data.fastingHistory);
-    fastingHistory = replaceAll ? inc : mergeById(fastingHistory, inc);
-  }
+  if (incBio) bioRecords = replaceAll ? incBio : mergeById(bioRecords, incBio);
+  if (incHist) fastingHistory = replaceAll ? incHist : mergeById(fastingHistory, incHist);
   if (replaceAll && data.state && typeof data.state === 'object') {
     const st = data.state;
     const g = num(st.goalHours);
@@ -689,29 +707,35 @@ function applyImportedData(data) {
     setGoalSelect(state.goalHours);
   }
 
-  saveBio();
-  saveFastingHistory();
-  saveState();
-  renderBioList();
-  renderCharts();
-  updateDisplay();
+  const refresh = () => { lastBadgeKey = ''; saveBio(); saveFastingHistory(); saveState(); renderBioList(); renderCharts(); updateDisplay(); };
+  refresh();
+  const summary = replaceAll
+    ? `已取代為 ${fastingHistory.length} 筆斷食紀錄、${bioRecords.length} 筆數據`
+    : `已新增 ${fastingHistory.length - beforeHist} 筆斷食紀錄、${bioRecords.length - beforeBio} 筆數據`;
+  showToast('✅ ' + summary, { actionLabel: '復原', duration: 8000, onAction: () => {
+    bioRecords = snapshot.bio; fastingHistory = snapshot.hist;
+    state = Object.assign(state, snapshot.state);
+    setGoalSelect(state.goalHours || 120);
+    refresh();
+    showToast('已復原匯入前的資料');
+  } });
 }
 
-function importCurrentData(file) {
+async function importCurrentData(file) {
   if (!file) return;
-  if (!consented) { alert('請先同意隱私說明才能匯入並儲存資料（點右上角 🔒）。'); return; }
-  if (file.size > 5 * 1024 * 1024) { alert('檔案過大'); return; }
-  const reader = new FileReader();
-  reader.onload = () => {
-    try {
-      const parsed = JSON.parse(String(reader.result || ''));
-      applyImportedData(parsed);
-      alert('✅ 資料匯入成功');
-    } catch (error) {
-      alert('匯入失敗：檔案格式不是有效的斷食資料 JSON');
-    }
-  };
-  reader.readAsText(file);
+  if (!consented) { await uiAlert('請先同意隱私說明才能匯入並儲存資料（點右上角 🔒）。'); return; }
+  if (file.size > 5 * 1024 * 1024) { await uiAlert('檔案過大（上限 5 MB）。', '匯入失敗'); return; }
+  let parsed;
+  try {
+    parsed = JSON.parse(await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload = () => res(String(reader.result || ''));
+      reader.onerror = () => rej(reader.error);
+      reader.readAsText(file);
+    }));
+  } catch (e) { await uiAlert('檔案不是有效的 JSON。', '匯入失敗'); return; }
+  try { await applyImportedData(parsed); }
+  catch (e) { await uiAlert(e.message || '檔案格式不是有效的斷食資料', '匯入失敗'); }
 }
 
 /* ---------------- DOM ---------------- */
@@ -787,12 +811,129 @@ function applyUnits() {
   document.getElementById('weightUnitSel').value = settings.weightUnit;
   document.getElementById('hydrateSel').value = String(settings.hydrateMin);
 }
-function showToast(text) {
+/* ---------------- 提示訊息與對話框（取代瀏覽器原生 alert / confirm / prompt） ---------------- */
+let toastEl = null, toastTimer = null;
+// opts: { actionLabel, onAction, duration }
+function showToast(text, opts = {}) {
+  if (toastEl) toastEl.remove();
+  clearTimeout(toastTimer);
   const t = document.createElement('div');
-  t.className = 'toast'; t.textContent = text;
+  t.className = 'toast'; t.setAttribute('role', 'status');
+  const span = document.createElement('span'); span.textContent = text; t.appendChild(span);
+  const close = () => { t.remove(); if (toastEl === t) toastEl = null; };
+  if (opts.actionLabel) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'toast-action'; b.textContent = opts.actionLabel;
+    b.addEventListener('click', () => { clearTimeout(toastTimer); close(); if (opts.onAction) opts.onAction(); });
+    t.appendChild(b);
+  }
   document.body.appendChild(t);
-  setTimeout(() => t.remove(), 5000);
+  toastEl = t;
+  toastTimer = setTimeout(close, opts.duration || 5000);
 }
+
+let dialogSeq = 0;
+/**
+ * 開啟對話框，回傳 Promise<{ action, values }>。
+ * fields: [{ name, label, type: 'text'|'number'|'datetime-local'|'textarea', value, placeholder, min, max, step, inputMode, maxLength }]
+ * buttons: [{ label, value, kind: 'primary'|'secondary'|'danger' }]，最後一個是按 Enter 的預設按鈕
+ * validate(values) 回傳錯誤字串時，對話框不關閉並顯示錯誤
+ */
+function openDialog({ title, message = '', fields = [], buttons = [{ label: '知道了', value: true, kind: 'primary' }], dismissValue = null, validate = null }) {
+  return new Promise((resolve) => {
+    const prevFocus = document.activeElement;
+    const id = 'dlg' + (++dialogSeq);
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    if (title) {
+      const h = document.createElement('h3'); h.id = id + '-t'; h.textContent = title;
+      modal.appendChild(h); modal.setAttribute('aria-labelledby', h.id);
+    }
+    if (message) {
+      const p = document.createElement('p'); p.className = 'modal-msg'; p.id = id + '-m'; p.textContent = message;
+      modal.appendChild(p); modal.setAttribute('aria-describedby', p.id);
+    }
+    const inputs = {};
+    const err = document.createElement('div'); err.className = 'form-error'; err.setAttribute('role', 'alert');
+    if (fields.length) {
+      const form = document.createElement('div'); form.className = 'modal-form';
+      fields.forEach((f) => {
+        const wrap = document.createElement('div'); wrap.className = 'field';
+        const lab = document.createElement('label'); lab.htmlFor = id + '-' + f.name; lab.textContent = f.label;
+        const inp = document.createElement(f.type === 'textarea' ? 'textarea' : 'input');
+        if (f.type !== 'textarea') inp.type = f.type || 'text';
+        inp.id = id + '-' + f.name;
+        ['placeholder', 'min', 'max', 'step', 'inputMode', 'maxLength'].forEach((k) => { if (f[k] != null) inp[k] = f[k]; });
+        inp.value = f.value == null ? '' : String(f.value);
+        inp.addEventListener('input', () => { err.textContent = ''; });
+        wrap.appendChild(lab); wrap.appendChild(inp); form.appendChild(wrap);
+        inputs[f.name] = inp;
+      });
+      modal.appendChild(form);
+    }
+    modal.appendChild(err);
+
+    const values = () => Object.fromEntries(Object.entries(inputs).map(([k, el]) => [k, el.value]));
+    const finish = (action) => {
+      if (action !== dismissValue && validate) {
+        const msg = validate(values());
+        if (msg) { err.textContent = msg; return; }
+      }
+      overlay.remove();
+      document.removeEventListener('keydown', onKey, true);
+      if (prevFocus && prevFocus.focus && document.contains(prevFocus)) prevFocus.focus();
+      resolve({ action, values: values() });
+    };
+
+    const actions = document.createElement('div'); actions.className = 'modal-actions';
+    const btnEls = buttons.map((b) => {
+      const el = document.createElement('button');
+      el.type = 'button'; el.className = 'modal-btn-' + (b.kind || 'secondary'); el.textContent = b.label;
+      el.addEventListener('click', () => finish(b.value));
+      actions.appendChild(el);
+      return el;
+    });
+    modal.appendChild(actions);
+    overlay.appendChild(modal);
+    // 沒有輸入欄位時，點背景可關閉（有輸入欄位時避免誤觸而遺失內容）
+    overlay.addEventListener('click', (e) => { if (e.target === overlay && !fields.length) finish(dismissValue); });
+
+    function onKey(e) {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(dismissValue); return; }
+      if (e.key === 'Enter' && e.target.tagName === 'INPUT' && modal.contains(e.target)) { e.preventDefault(); btnEls[btnEls.length - 1].click(); return; }
+      if (e.key === 'Tab') {
+        // 讓焦點留在對話框內
+        const focusables = [...modal.querySelectorAll('input, textarea, select, button')].filter((el) => !el.disabled);
+        if (!focusables.length) return;
+        const first = focusables[0], last = focusables[focusables.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        else if (!modal.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+      }
+    }
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(overlay);
+
+    // 預設焦點：有欄位→第一個欄位；有危險按鈕→第一個非危險按鈕（避免按 Enter 直接刪除）；否則最後一個按鈕
+    const firstInput = Object.values(inputs)[0];
+    const hasDanger = buttons.some((b) => b.kind === 'danger');
+    const target = firstInput || (hasDanger ? btnEls[buttons.findIndex((b) => b.kind !== 'danger')] : null) || btnEls[btnEls.length - 1];
+    if (target) target.focus();
+  });
+}
+function uiAlert(message, title = '提示') {
+  return openDialog({ title, message, buttons: [{ label: '知道了', value: true, kind: 'primary' }], dismissValue: true });
+}
+async function uiConfirm(message, { title = '請確認', ok = '確定', cancel = '取消', danger = false } = {}) {
+  const r = await openDialog({ title, message, dismissValue: false,
+    buttons: [{ label: cancel, value: false, kind: 'secondary' }, { label: ok, value: true, kind: danger ? 'danger' : 'primary' }] });
+  return r.action === true;
+}
+function parseLocalDatetime(v) { if (!v) return NaN; const t = new Date(v).getTime(); return isFinite(t) ? t : NaN; }
 
 /* ---------------- 工具 ---------------- */
 function toLocalDatetimeInputValue(ms) {
@@ -885,6 +1026,8 @@ function updateDisplay() {
     pctText.textContent = '已過 0%';
     document.body.style.setProperty('--phase', 'var(--accent)');
     endBtn.disabled = true;
+    endBtn.hidden = true;
+    startBtn.className = 'btn-primary';
     startBtn.textContent = '開始斷食';
     elapsedText.textContent = '00:00:00';
     goalText.textContent = '目標 ' + fmtGoal(goalHours);
@@ -904,7 +1047,11 @@ function updateDisplay() {
   const pct = Math.min(100, (elapsedHours / goalHours) * 100);
 
   pctText.textContent = '已過 ' + pct.toFixed(0) + '%・第 ' + (Math.floor(elapsedHours / 24) + 1) + ' 天';
+  // 斷食進行中，主要動作是「結束斷食」，「重新開始」降為次要按鈕
   endBtn.disabled = false;
+  endBtn.hidden = false;
+  endBtn.className = 'btn-primary';
+  startBtn.className = 'btn-secondary';
   startBtn.textContent = '重新開始';
   document.body.style.setProperty('--phase', phaseColor(elapsedHours));
   elapsedText.textContent = fmtHMS(elapsedSec);
@@ -1015,18 +1162,21 @@ function releaseWakeLock() { try { if (wakeLock) wakeLock.release(); } catch (e)
 let startInputManuallyEdited = false;
 startInput.addEventListener('input', () => { startInputManuallyEdited = true; });
 
-startBtn.addEventListener('click', () => {
+startBtn.addEventListener('click', async () => {
   if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
   // 除非使用者手動修改過開始時間欄位，否則一律使用「按下當下」的時間，避免計時器一開始就已經算了一段時間
   const startMs = (startInputManuallyEdited && startInput.value) ? new Date(startInput.value).getTime() : Date.now();
-  if (!isFinite(startMs) || startMs > Date.now() + 60000) { alert('開始時間不能是未來的時間'); return; }
-  if (Date.now() - startMs > 30 * 24 * 3600000) { alert('開始時間距今超過 30 天，請重新確認'); return; }
-  if (state.running && !confirm('目前已有進行中的斷食，要重新開始嗎？（不會存入歷史）')) return;
+  if (!isFinite(startMs) || startMs > Date.now() + 60000) { await uiAlert('開始時間不能是未來的時間。'); return; }
+  if (Date.now() - startMs > 30 * 24 * 3600000) { await uiAlert('開始時間距今超過 30 天，請重新確認。'); return; }
+  if (state.running && !(await uiConfirm('目前已有進行中的斷食，要以新的開始時間重新計時嗎？\n目前這段不會存入歷史。', { title: '重新開始', ok: '重新開始', danger: true }))) return;
   state.running = true;
   state.startTime = startMs;
   state.goalHours = Number(goalSelect.value) || 24;
+  // 補記過去的開始時間時，已經過的里程碑與目標不再跳出慶祝
+  const passedH = (Date.now() - startMs) / 3600000;
   state.notified = {};
-  state.goalNotified = false;
+  MILESTONES.forEach(m => { if (passedH >= m) state.notified[m] = true; });
+  state.goalNotified = passedH >= state.goalHours;
   state.lastHydrate = null;
   lastBadgeKey = '';
   startInputManuallyEdited = false;
@@ -1035,16 +1185,24 @@ startBtn.addEventListener('click', () => {
   updateDisplay();
 });
 
-endBtn.addEventListener('click', () => {
+endBtn.addEventListener('click', async () => {
   if (!state.running) return;
-  if (confirm('確定要結束這次斷食嗎？')) {
+  const goalH = Number(state.goalHours || goalSelect.value || 24);
+  const soFarMs = Date.now() - state.startTime;
+  const r = await openDialog({
+    title: '結束斷食',
+    message: `本次已斷食 ${fmtDurationHours(soFarMs)}，目標 ${fmtGoal(goalH)}（${soFarMs / 3600000 >= goalH ? '已達成' : '尚未達成'}）。`
+      + (consented ? '' : '\n\n⚠️ 尚未同意隱私說明，這筆紀錄不會被儲存。'),
+    fields: [{ name: 'note', label: '筆記（選填）', type: 'textarea', placeholder: '例如：身體感覺、飲水量、結束原因…', maxLength: 500 }],
+    buttons: [{ label: '繼續斷食', value: false, kind: 'secondary' }, { label: '結束斷食', value: true, kind: 'primary' }],
+    dismissValue: false,
+  });
+  if (r.action === true && state.running) {
     const endTime = Date.now();
     const durationMs = endTime - state.startTime;
     const durationHours = durationMs / 3600000;
-    
-    const noteText = prompt('添加本次斷食的筆記（選填）:', '');
-    if (!consented) alert('尚未同意隱私說明，這筆紀錄不會被儲存。');
-    
+    const noteText = r.values.note.trim();
+
     fastingHistory.unshift({
       id: 'fast_' + endTime,
       startTime: state.startTime,
@@ -1065,9 +1223,9 @@ endBtn.addEventListener('click', () => {
     saveState();
     updateDisplay();
     if (durationHours >= 24) {
-      alert(durationHours >= 48
-        ? '🍽️ 復食提醒（斷食 ≥ 48 小時）\n\n• 先喝水、清湯或少量電解質飲品\n• 第一餐份量小、易消化（如粥、蒸蛋、煮熟蔬菜），慢慢吃\n• 避免大量精緻碳水、油炸與酒精\n• 少量多餐，1–3 天內逐步恢復正常飲食\n• 長時間斷食後有「再餵食症候群」風險（低磷、低鉀、低鎂），建議由醫療人員指導\n• 若出現心悸、水腫、呼吸困難、極度虛弱，請立即就醫'
-        : '🍽️ 復食提醒\n\n先喝水，第一餐吃少量、好消化的食物，避免一次吃太多或太油膩。');
+      await uiAlert(durationHours >= 48
+        ? '斷食 ≥ 48 小時\n\n• 先喝水、清湯或少量電解質飲品\n• 第一餐份量小、易消化（如粥、蒸蛋、煮熟蔬菜），慢慢吃\n• 避免大量精緻碳水、油炸與酒精\n• 少量多餐，1–3 天內逐步恢復正常飲食\n• 長時間斷食後有「再餵食症候群」風險（低磷、低鉀、低鎂），建議由醫療人員指導\n• 若出現心悸、水腫、呼吸困難、極度虛弱，請立即就醫'
+        : '先喝水，第一餐吃少量、好消化的食物，避免一次吃太多或太油膩。', '🍽️ 復食提醒');
     }
   }
 });
@@ -1136,6 +1294,10 @@ function renderBioList() {
       saveBio();
       renderBioList();
       renderCharts();
+      showToast('已刪除 ' + fmtDateShort(rec.time) + ' 的記錄', { actionLabel: '復原', duration: 6000, onAction: () => {
+        if (!bioRecords.some((r) => r.id === rec.id)) bioRecords.push(rec);
+        saveBio(); renderBioList(); renderCharts();
+      } });
     });
     item.appendChild(removeBtn);
 
@@ -1143,37 +1305,43 @@ function renderBioList() {
   });
 }
 
-bioAddBtn.addEventListener('click', () => {
+const bioTimeInput = document.getElementById('bioTimeInput');
+const bioError = document.getElementById('bioError');
+document.querySelector('.bio-form').addEventListener('input', () => { bioError.textContent = ''; });
+bioAddBtn.addEventListener('click', async () => {
   if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+  const fail = (msg) => { bioError.textContent = msg; };
+  bioError.textContent = '';
   const weight = canonVal('weight', parseFloat(weightInput.value));
   const hr = parseFloat(hrInput.value);
   const glucose = canonVal('glucose', parseFloat(glucoseInput.value));
   const sys = parseFloat(sysInput.value);
   const dia = parseFloat(diaInput.value);
 
-  if ((sys && !dia) || (!sys && dia)) { alert('血壓需同時填寫收縮壓與舒張壓'); return; }
-  if (!weight && !hr && !glucose && !(sys && dia) && !selectedSymptoms.size) {
-    alert('請至少填寫一項數值，或選擇症狀');
-    return;
+  if ((sys && !dia) || (!sys && dia)) return fail('血壓需同時填寫收縮壓與舒張壓');
+  if (!weight && !hr && !glucose && !(sys && dia) && !selectedSymptoms.size) return fail('請至少填寫一項數值，或選擇症狀');
+  const within = (v, lo, hi) => isNaN(v) || !v || (v >= lo && v <= hi);
+  if (!within(weight, 20, 400) || !within(hr, 20, 250) || !within(glucose, 10, 800) || !within(sys, 50, 300) || !within(dia, 30, 200)) {
+    return fail('有數值超出合理範圍，請重新確認');
   }
-  const inRange = (v, lo, hi) => isNaN(v) || !v || (v >= lo && v <= hi);
-  if (!inRange(weight, 20, 400) || !inRange(hr, 20, 250) || !inRange(glucose, 10, 800) || !inRange(sys, 50, 300) || !inRange(dia, 30, 200)) {
-    alert('有數值超出合理範圍，請重新確認');
-    return;
+  let time = Date.now();
+  if (bioTimeInput.value) {
+    time = parseLocalDatetime(bioTimeInput.value);
+    if (!isFinite(time) || time > Date.now() + 60000) return fail('記錄時間不能是未來的時間');
+    if (Date.now() - time > 365 * 86400000) return fail('記錄時間不能早於一年前');
   }
-  const warns = dangerWarnings({ hr, glucose, sys, dia, symptoms: [...selectedSymptoms] });
-  if (warns.length) alert('⚠️ 健康提醒\n' + warns.join('\n') + '\n\n若同時感到不適，請停止斷食、補充飲食並盡快就醫。');
-  if (!consented) alert('尚未同意隱私說明，這筆數據不會被儲存。');
+  const symptoms = [...selectedSymptoms];
+  const warns = dangerWarnings({ hr, glucose, sys, dia, symptoms });
 
   bioRecords.push({
     id: Date.now() + '_' + Math.random().toString(36).slice(2, 7),
-    time: Date.now(),
+    time,
     weight: isNaN(weight) ? null : weight,
     hr: isNaN(hr) ? null : hr,
     glucose: isNaN(glucose) ? null : glucose,
     sys: isNaN(sys) ? null : sys,
     dia: isNaN(dia) ? null : dia,
-    symptoms: [...selectedSymptoms],
+    symptoms,
   });
   saveBio();
   renderBioList();
@@ -1184,8 +1352,11 @@ bioAddBtn.addEventListener('click', () => {
   glucoseInput.value = '';
   sysInput.value = '';
   diaInput.value = '';
+  bioTimeInput.value = '';
   selectedSymptoms.clear();
   renderSymptomChips();
+  showToast(consented ? '✅ 已新增記錄（' + fmtDateShort(time) + '）' : '已新增，但尚未同意隱私說明，這筆數據不會被儲存');
+  if (warns.length) await uiAlert(warns.join('\n') + '\n\n若同時感到不適，請停止斷食、補充飲食並盡快就醫。', '⚠️ 健康提醒');
 });
 
 /* ---------- 黑暗模式與快速預設 ---------- */
@@ -1230,11 +1401,16 @@ presetBtns.forEach(btn => {
 
 exportDataBtn.addEventListener('click', exportCurrentData);
 exportCsvBtn.addEventListener('click', exportCsv);
-document.getElementById('customGoalBtn').addEventListener('click', () => {
-  const v = prompt('自訂目標時數（1–720 小時）：', String(state.goalHours || 24));
-  if (v === null) return;
-  const h = Math.round(Number(v));
-  if (!isFinite(h) || h < 1 || h > 720) { alert('請輸入 1–720 之間的小時數'); return; }
+document.getElementById('customGoalBtn').addEventListener('click', async () => {
+  const r = await openDialog({
+    title: '自訂目標時數',
+    fields: [{ name: 'hours', label: '目標時數（1–720 小時）', type: 'number', value: state.goalHours || 24, min: 1, max: 720, step: 1, inputMode: 'numeric' }],
+    buttons: [{ label: '取消', value: false, kind: 'secondary' }, { label: '設定', value: true, kind: 'primary' }],
+    dismissValue: false,
+    validate: (v) => { const n = Number(v.hours); return (!v.hours.trim() || !isFinite(n) || n < 1 || n > 720) ? '請輸入 1–720 之間的小時數' : ''; },
+  });
+  if (r.action !== true) return;
+  const h = Math.round(Number(r.values.hours));
   setGoalSelect(h);
   state.goalHours = h;
   onGoalChanged();
@@ -1269,20 +1445,24 @@ importFileInput.addEventListener('change', (event) => {
   event.target.value = '';
 });
 
-clearDataBtn.addEventListener('click', () => {
-  if (confirm('⚠️ 確定要刪除所有生物數據嗎？此操作無法復原！')) {
-    if (confirm('再次確認：刪除所有數據？')) {
-      bioRecords = [];
-      fastingHistory = [];
-      // 未同意時 saveBio() 不會寫入，必須直接移除；舊版 key 也要刪，否則重新整理會被搬回來
-      [BIO_KEY, LEGACY_BIO_KEY, FASTING_HISTORY_KEY].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
-      saveBio();
-      saveFastingHistory();
-      renderBioList();
-      renderCharts();
-      alert('✅ 所有數據已清空');
-    }
-  }
+clearDataBtn.addEventListener('click', async () => {
+  if (!bioRecords.length && !fastingHistory.length) { showToast('目前沒有資料可清空'); return; }
+  const ok = await uiConfirm(`將刪除 ${bioRecords.length} 筆生理數據與 ${fastingHistory.length} 筆斷食紀錄。`, { title: '清空所有數據', ok: '全部刪除', danger: true });
+  if (!ok) return;
+  const backup = { bio: bioRecords, hist: fastingHistory };
+  bioRecords = [];
+  fastingHistory = [];
+  // 未同意時 saveBio() 不會寫入，必須直接移除；舊版 key 也要刪，否則重新整理會被搬回來
+  [BIO_KEY, LEGACY_BIO_KEY, FASTING_HISTORY_KEY].forEach(k => { try { localStorage.removeItem(k); } catch (e) {} });
+  saveBio();
+  saveFastingHistory();
+  renderBioList();
+  renderCharts();
+  showToast('已清空所有數據', { actionLabel: '復原', duration: 8000, onAction: () => {
+    bioRecords = backup.bio.concat(bioRecords);
+    fastingHistory = backup.hist.concat(fastingHistory);
+    saveBio(); saveFastingHistory(); renderBioList(); renderCharts();
+  } });
 });
 
 /* ---------------- 趨勢圖表 ---------------- */
@@ -1595,25 +1775,57 @@ function renderFastingHistory() {
     const actions = document.createElement('div');
     actions.className = 'history-actions';
     const editBtn = document.createElement('button');
-    editBtn.textContent = '編輯筆記';
-    editBtn.addEventListener('click', () => {
-      const t = prompt('編輯筆記：', entry.note || '');
-      if (t === null) return;
-      entry.note = t.slice(0, 500);
-      saveFastingHistory(); renderFastingHistory();
-    });
+    editBtn.textContent = '編輯';
+    editBtn.addEventListener('click', () => editFastingEntry(entry));
     const delBtn = document.createElement('button');
     delBtn.textContent = '刪除';
     delBtn.addEventListener('click', () => {
-      if (!confirm('刪除這筆斷食紀錄？')) return;
       fastingHistory = fastingHistory.filter(f => f.id !== entry.id);
       saveFastingHistory(); renderCharts();
+      showToast('已刪除這筆斷食紀錄', { actionLabel: '復原', duration: 6000, onAction: () => {
+        if (!fastingHistory.some(f => f.id === entry.id)) fastingHistory.push(entry);
+        saveFastingHistory(); renderCharts();
+      } });
     });
     actions.appendChild(editBtn); actions.appendChild(delBtn);
     item.appendChild(actions);
 
     historyList.appendChild(item);
   });
+}
+
+async function editFastingEntry(entry) {
+  const origStart = toLocalDatetimeInputValue(entry.startTime), origEnd = toLocalDatetimeInputValue(entry.endTime);
+  const r = await openDialog({
+    title: '編輯斷食紀錄',
+    fields: [
+      { name: 'start', label: '開始時間', type: 'datetime-local', value: origStart },
+      { name: 'end', label: '結束時間', type: 'datetime-local', value: origEnd },
+      { name: 'goal', label: '目標時數', type: 'number', value: entry.goalHours, min: 1, max: 720, step: 1, inputMode: 'numeric' },
+      { name: 'note', label: '筆記', type: 'textarea', value: entry.note || '', maxLength: 500 },
+    ],
+    buttons: [{ label: '取消', value: false, kind: 'secondary' }, { label: '儲存', value: true, kind: 'primary' }],
+    dismissValue: false,
+    validate: (v) => {
+      const s = parseLocalDatetime(v.start), e = parseLocalDatetime(v.end), g = Number(v.goal);
+      if (!isFinite(s) || !isFinite(e)) return '請填寫開始與結束時間';
+      if (e <= s) return '結束時間必須晚於開始時間';
+      if (e > Date.now() + 60000) return '結束時間不能是未來的時間';
+      if (!v.goal.trim() || !isFinite(g) || g < 1 || g > 720) return '目標時數需介於 1–720 小時';
+      return '';
+    },
+  });
+  if (r.action !== true) return;
+  // 欄位只到分鐘：沒改動的時間保留原本的秒數
+  if (r.values.start !== origStart) entry.startTime = parseLocalDatetime(r.values.start);
+  if (r.values.end !== origEnd) entry.endTime = parseLocalDatetime(r.values.end);
+  entry.durationMs = entry.endTime - entry.startTime;
+  entry.durationHours = entry.durationMs / 3600000;
+  entry.goalHours = Math.round(Number(r.values.goal));
+  entry.note = r.values.note.trim().slice(0, 500);
+  saveFastingHistory();
+  renderCharts();
+  showToast('✅ 已更新斷食紀錄');
 }
 
 function renderCharts() {
@@ -1644,20 +1856,21 @@ function showConsentModal() {
   if (document.getElementById('consentOverlay')) return;
   const overlay = document.createElement('div');
   overlay.id = 'consentOverlay';
-  overlay.className = 'consent-overlay';
+  overlay.className = 'modal-overlay';
   overlay.innerHTML = `
-    <div class="consent-modal">
-      <h3>隱私與資料處理說明</h3>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
+      <h3 id="consentTitle">隱私與資料處理說明</h3>
       <p>本應用在您的瀏覽器本機儲存斷食紀錄與生理數據，用於顯示統計與歷史。資料不會自動上傳到任何伺服器，除非您手動匯出並上傳。</p>
       <p>注意：應用僅提供參考資訊，並非醫療診斷或治療建議。若需醫療意見請諮詢專業醫療人員。</p>
       <p>處理敏感生理資料前，請閱讀並同意以下內容：您同意此應用以本機方式儲存與處理資料，並可隨時匯出或刪除本機資料。</p>
       <div style="margin-top:8px; font-size:12px; color:var(--text-faint);">使用本應用即表示您已閱讀並同意上述內容。</div>
-      <div class="consent-actions">
-        <button class="consent-decline" id="consentDecline">不同意</button>
-        <button class="consent-accept" id="consentAccept">同意並繼續</button>
+      <div class="modal-actions">
+        <button class="modal-btn-secondary" id="consentDecline">不同意</button>
+        <button class="modal-btn-primary" id="consentAccept">同意並繼續</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
+  document.getElementById('consentAccept').focus();
   document.getElementById('consentAccept').addEventListener('click', () => {
     consented = true;
     lsSet(CONSENT_KEY, '1');
@@ -1665,13 +1878,13 @@ function showConsentModal() {
     nosaveBanner.hidden = true;
     saveState(); saveBio(); saveFastingHistory();
   });
-  document.getElementById('consentDecline').addEventListener('click', () => {
+  document.getElementById('consentDecline').addEventListener('click', async () => {
     consented = false;
     try { localStorage.removeItem(CONSENT_KEY); } catch (e) {}
     overlay.remove();
     nosaveBanner.hidden = false;
     // 先前同意時存下的資料仍在本機，詢問是否一併刪除
-    if (hasStoredData() && confirm('本機仍保存著先前的斷食紀錄與生理數據。\n要一併刪除嗎？\n\n按「確定」＝刪除\n按「取消」＝保留（但之後的變更不會儲存）')) {
+    if (hasStoredData() && await uiConfirm('本機仍保存著先前的斷食紀錄與生理數據，要一併刪除嗎？\n若選擇保留，之後的新增或修改都不會儲存。', { title: '刪除先前的資料？', ok: '刪除', cancel: '保留', danger: true })) {
       removeStoredData();
       bioRecords = [];
       fastingHistory = [];
@@ -1683,22 +1896,21 @@ function showConsentModal() {
 }
 
 document.getElementById('privacyBtn').addEventListener('click', () => showConsentModal());
-wipeDataBtn.addEventListener('click', () => {
-  if (!confirm('確定要刪除所有本機資料？此操作無法還原')) return;
+wipeDataBtn.addEventListener('click', async () => {
+  if (!(await uiConfirm('將刪除所有斷食紀錄、生理數據、設定與隱私同意，頁面會重新整理。此操作無法復原。', { title: '刪除所有本機資料', ok: '全部刪除', danger: true }))) return;
   try {
     removeStoredData();
     localStorage.removeItem(CONSENT_KEY);
     localStorage.removeItem(THEME_KEY);
     localStorage.removeItem(SETTINGS_KEY);
   } catch (e) {}
-  alert('本機資料已刪除，頁面將重新整理。');
   location.reload();
 });
 
 /* --------------- 鍵盤快捷鍵 --------------- */
 document.addEventListener('keydown', (e) => {
   if (e.target.closest && e.target.closest('input, select, textarea, button, a')) return;
-  if (document.getElementById('consentOverlay') || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (document.querySelector('.modal-overlay') || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.code === 'Digit1') tabBtns[0]?.click();
   if (e.code === 'Digit2') tabBtns[1]?.click();
   if (e.code === 'Digit3') tabBtns[2]?.click();

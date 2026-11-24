@@ -4,10 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>斷食計時器</title>
+<meta name="description" content="長時間斷食計時器，記錄體重、心跳、血糖與血壓，資料只存在本機，支援離線使用" />
 <link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#0b1220" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
+<!-- 初始值與淺色主題一致，載入後由 applyTheme() 依實際主題更新 -->
+<meta name="theme-color" content="#eef2ef" />
 <meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="斷食計時器" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<link rel="icon" href="icon.svg" type="image/svg+xml" />
+<link rel="icon" href="icon-192.png" type="image/png" sizes="192x192" />
 <link rel="apple-touch-icon" href="icon-180.png" />
 <style>
   /* ---------- tokens ---------- */
@@ -288,6 +294,7 @@
   svg.sparkline .pt { transition: r 0.15s; }
   svg.sparkline .pt.sel { r: 5; stroke: var(--surface); stroke-width: 2; }
   svg.sparkline .hit { cursor: pointer; }
+  svg.sparkline:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 6px; }
   .chart-tip { font-size: 13px; color: var(--text); margin-top: 6px; font-variant-numeric: tabular-nums; min-height: 20px; }
   .chips { display: flex; flex-wrap: wrap; gap: 8px; }
   .chip { height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--text-dim); font-size: 13px; }
@@ -328,6 +335,7 @@
   .modal h3 { margin: 0 0 8px; font-size: 18px; }
   .modal p { margin: 8px 0; font-size: 14px; line-height: 1.65; color: var(--text-dim); }
   .modal .modal-msg { white-space: pre-line; }
+  .modal .modal-note { font-size: 12px; color: var(--text-faint); }
   .modal-form { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
   .modal-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; margin-top: 16px; }
   .modal-actions button { height: 44px; padding: 0 18px; border-radius: var(--r-ctl); }
@@ -350,7 +358,7 @@
 <div id="app">
 
   <!-- ===================== HOME VIEW ===================== -->
-  <div class="view active" id="home-view">
+  <div class="view active" id="home-view" role="tabpanel" aria-labelledby="tab-home">
     <header class="topbar">
       <div class="brand">斷食計時</div>
       <div class="topbar-actions">
@@ -440,7 +448,7 @@
   </div>
 
   <!-- ===================== INPUT VIEW ===================== -->
-  <div class="view" id="input-view">
+  <div class="view" id="input-view" role="tabpanel" aria-labelledby="tab-input">
     <h1 class="page-title">記錄數據</h1>
     <section class="card">
       <h2 class="section-title"><span class="pulse-dot"></span>體重、心跳、血糖、血壓</h2>
@@ -502,7 +510,7 @@
   </div>
 
   <!-- ===================== CHART VIEW ===================== -->
-  <div class="view" id="chart-view">
+  <div class="view" id="chart-view" role="tabpanel" aria-labelledby="tab-chart">
     <h1 class="page-title">趨勢統計</h1>
     <section class="card">
       <h2 class="section-title">斷食統計</h2>
@@ -540,10 +548,10 @@
   </div>
 
   <!-- ===================== TAB BAR ===================== -->
-  <nav class="tab-bar">
-    <button class="tab-btn active" data-view="home-view"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>首頁</button>
-    <button class="tab-btn" data-view="input-view"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg>記錄</button>
-    <button class="tab-btn" data-view="chart-view"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4M4 20h16M8 15l3-4 3 2 5-6"/></svg>統計</button>
+  <nav class="tab-bar" role="tablist" aria-label="主要頁面">
+    <button class="tab-btn active" data-view="home-view" id="tab-home" role="tab" aria-controls="home-view" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg>首頁</button>
+    <button class="tab-btn" data-view="input-view" id="tab-input" role="tab" aria-controls="input-view" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16v4z"/></svg>記錄</button>
+    <button class="tab-btn" data-view="chart-view" id="tab-chart" role="tab" aria-controls="chart-view" aria-selected="false" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4M4 20h16M8 15l3-4 3 2 5-6"/></svg>統計</button>
   </nav>
 
 </div>
@@ -552,13 +560,27 @@
 /* ---------------- 頁籤切換 ---------------- */
 const tabBtns = document.querySelectorAll('.tab-btn');
 const views = document.querySelectorAll('.view');
-tabBtns.forEach(btn => {
-  btn.addEventListener('click', () => {
-    const target = btn.getAttribute('data-view');
-    views.forEach(v => v.classList.toggle('active', v.id === target));
-    tabBtns.forEach(b => b.classList.toggle('active', b === btn));
-    if (target === 'chart-view') renderCharts();
-    if (target === 'input-view') renderBioList();
+function selectTab(btn, focus) {
+  const target = btn.getAttribute('data-view');
+  views.forEach(v => v.classList.toggle('active', v.id === target));
+  tabBtns.forEach(b => {
+    const on = b === btn;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-selected', on ? 'true' : 'false');
+    b.tabIndex = on ? 0 : -1; // 只有目前的頁籤在 Tab 順序中，其他用方向鍵切換
+  });
+  if (focus) btn.focus();
+  if (target === 'chart-view') renderCharts();
+  if (target === 'input-view') renderBioList();
+}
+tabBtns.forEach((btn, i) => {
+  btn.addEventListener('click', () => selectTab(btn));
+  btn.addEventListener('keydown', (e) => {
+    const n = tabBtns.length;
+    const next = { ArrowRight: (i + 1) % n, ArrowLeft: (i - 1 + n) % n, Home: 0, End: n - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    selectTab(tabBtns[next], true);
   });
 });
 
@@ -881,12 +903,13 @@ let dialogSeq = 0;
  * buttons: [{ label, value, kind: 'primary'|'secondary'|'danger' }]，最後一個是按 Enter 的預設按鈕
  * validate(values) 回傳錯誤字串時，對話框不關閉並顯示錯誤
  */
-function openDialog({ title, message = '', fields = [], buttons = [{ label: '知道了', value: true, kind: 'primary' }], dismissValue = null, validate = null }) {
+function openDialog({ title, message = '', note = '', fields = [], buttons = [{ label: '知道了', value: true, kind: 'primary' }], dismissValue = null, validate = null, overlayId = '', backdropDismiss = true }) {
   return new Promise((resolve) => {
     const prevFocus = document.activeElement;
     const id = 'dlg' + (++dialogSeq);
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
+    if (overlayId) overlay.id = overlayId;
     const modal = document.createElement('div');
     modal.className = 'modal';
     modal.setAttribute('role', 'dialog');
@@ -899,6 +922,7 @@ function openDialog({ title, message = '', fields = [], buttons = [{ label: '知
       const p = document.createElement('p'); p.className = 'modal-msg'; p.id = id + '-m'; p.textContent = message;
       modal.appendChild(p); modal.setAttribute('aria-describedby', p.id);
     }
+    if (note) { const n = document.createElement('p'); n.className = 'modal-note'; n.textContent = note; modal.appendChild(n); }
     const inputs = {};
     const err = document.createElement('div'); err.className = 'form-error'; err.setAttribute('role', 'alert');
     if (fields.length) {
@@ -942,7 +966,7 @@ function openDialog({ title, message = '', fields = [], buttons = [{ label: '知
     modal.appendChild(actions);
     overlay.appendChild(modal);
     // 沒有輸入欄位時，點背景可關閉（有輸入欄位時避免誤觸而遺失內容）
-    overlay.addEventListener('click', (e) => { if (e.target === overlay && !fields.length) finish(dismissValue); });
+    overlay.addEventListener('click', (e) => { if (backdropDismiss && e.target === overlay && !fields.length) finish(dismissValue); });
 
     function onKey(e) {
       if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); finish(dismissValue); return; }
@@ -1082,6 +1106,7 @@ function renderBadges(elapsedHours, goalHours) {
     const currentPhase = getPhase(elapsedHours);
     if (currentPhase.hours === m) cls = 'current';
     badge.className = 'badge ' + cls;
+    badge.setAttribute('aria-hidden', 'true');
     badge.style.left = x + 'px';
     badge.style.top = y + 'px';
     badge.textContent = m;
@@ -1111,6 +1136,8 @@ function updateDisplay() {
     elapsedText.textContent = '00:00:00';
     goalText.textContent = '目標 ' + fmtGoal(goalHours);
     ringBg.style.setProperty('--pct', 0);
+    ringWrap.setAttribute('aria-valuenow', '0');
+    ringWrap.setAttribute('aria-valuetext', '尚未開始斷食');
     startLabel.textContent = '—';
     endLabel.textContent = '—';
     phaseTitle.textContent = '尚未開始';
@@ -1141,6 +1168,7 @@ function updateDisplay() {
   const scaleMax = Math.max(goalHours, ...MILESTONES.filter(m => m <= goalHours * 1.4));
   ringBg.style.setProperty('--pct', Math.min(100, (elapsedHours / scaleMax) * 100));
   ringWrap.setAttribute('aria-valuenow', pct.toFixed(0));
+  ringWrap.setAttribute('aria-valuetext', `已斷食 ${fmtHD(elapsedHours)}，目標 ${fmtGoal(goalHours)}的 ${pct.toFixed(0)}%`);
 
   startLabel.textContent = fmtDateShort(state.startTime);
   endLabel.textContent = fmtDateShort(state.startTime + goalHours * 3600 * 1000);
@@ -1274,7 +1302,13 @@ function catchUpAfterAway(since) {
 document.getElementById('awayClose').addEventListener('click', hideAwayCard);
 
 function tick() {
-  if (Date.now() - lastSeenWrite > 30000 && !document.hidden) markSeen();
+  if (document.hidden) {
+    // 看不到畫面時不更新 DOM，只檢查提醒（桌面瀏覽器在背景仍會低頻率執行，可以照常發通知）
+    if (state.running && state.startTime) checkMilestoneNotify((Date.now() - state.startTime) / 3600000);
+    checkHydrate();
+    return;
+  }
+  if (Date.now() - lastSeenWrite > 30000) markSeen();
   updateDisplay();
   checkHydrate();
   const nowSec = Math.floor(Date.now() / 1000);
@@ -1432,7 +1466,7 @@ function renderBioList() {
     const removeBtn = document.createElement('button');
     removeBtn.className = 'bio-remove';
     removeBtn.textContent = '✕';
-    removeBtn.setAttribute('aria-label', '刪除這筆記錄');
+    removeBtn.setAttribute('aria-label', '刪除 ' + fmtDateShort(rec.time) + ' 的記錄');
     removeBtn.addEventListener('click', () => {
       bioRecords = bioRecords.filter((r) => r.id !== rec.id);
       saveBio();
@@ -1517,6 +1551,9 @@ function applyTheme() {
   themeToggle.innerHTML = isDarkMode ? ICON_SUN : ICON_MOON;
   document.querySelector('meta[name="theme-color"]').setAttribute('content', isDarkMode ? '#0c1317' : '#eef2ef');
   themeToggle.classList.toggle('active', isDarkMode);
+  const themeLabel = isDarkMode ? '切換為淺色模式' : '切換為深色模式';
+  themeToggle.setAttribute('aria-label', themeLabel);
+  themeToggle.title = themeLabel;
 }
 
 themeToggle.addEventListener('click', () => {
@@ -1622,10 +1659,10 @@ clearDataBtn.addEventListener('click', async () => {
 /* ---------------- 趨勢圖表 ---------------- */
 const MAX_POINTS = 60;
 let chartRange = 0;
-const inRange = (r) => chartRange === 0 || r.time >= Date.now() - chartRange * 86400000;
+const inChartRange = (r) => chartRange === 0 || r.time >= Date.now() - chartRange * 86400000;
 
 const SVG_W = 320, SVG_H = 120, PL = 42, PR = 308, PT = 10, PB = 98;
-function makeChartSVG(times, seriesList, fmtY) {
+function makeChartSVG(times, seriesList, fmtY, label) {
   const all = seriesList.flatMap(s => s.values);
   let min = Math.min(...all), max = Math.max(...all);
   const pad = (max - min) * 0.1 || 1;
@@ -1633,7 +1670,7 @@ function makeChartSVG(times, seriesList, fmtY) {
   const t0 = times[0], t1 = times[times.length - 1];
   const X = (t) => t1 === t0 ? (PL + PR) / 2 : PL + ((t - t0) / (t1 - t0)) * (PR - PL);
   const Y = (v) => PB - ((v - min) / (max - min)) * (PB - PT);
-  let svg = `<svg class="sparkline" viewBox="0 0 ${SVG_W} ${SVG_H}" role="img">`;
+  let svg = `<svg class="sparkline" viewBox="0 0 ${SVG_W} ${SVG_H}" role="img" tabindex="0" aria-label="${label}">`;
   [min + pad, (min + max) / 2, max - pad].forEach(v => {
     const y = Y(v).toFixed(1);
     svg += `<line x1="${PL}" x2="${PR}" y1="${y}" y2="${y}" stroke="var(--line)" stroke-width="1" />`;
@@ -1651,15 +1688,19 @@ function makeChartSVG(times, seriesList, fmtY) {
   return svg + '</svg>';
 }
 // 圖表 + 點選查看數值
-function attachChart(card, times, seriesList, fmtY, tipText) {
+// label 只含數字與固定文字（數值皆經 sanitize 為數字），可安全放進 SVG 屬性
+function attachChart(card, times, seriesList, fmtY, tipText, label) {
   const wrap = document.createElement('div');
-  wrap.innerHTML = makeChartSVG(times, seriesList, fmtY);
+  wrap.innerHTML = makeChartSVG(times, seriesList, fmtY, label + '。用左右方向鍵查看各筆數值');
   const svg = wrap.firstChild;
   card.appendChild(svg);
   const tip = document.createElement('div');
   tip.className = 'chart-tip';
+  tip.setAttribute('aria-live', 'polite');
   card.appendChild(tip);
+  let cur = times.length - 1;
   const show = (i) => {
+    cur = i;
     tip.textContent = fmtDateShort(times[i]) + '　' + tipText(i);
     svg.querySelectorAll('.pt').forEach(c => c.classList.toggle('sel', Number(c.dataset.i) === i));
   };
@@ -1667,7 +1708,13 @@ function attachChart(card, times, seriesList, fmtY, tipText) {
     const t = e.target.closest('[data-i]');
     if (t) show(Number(t.dataset.i));
   });
-  show(times.length - 1);
+  svg.addEventListener('keydown', (e) => {
+    const next = { ArrowRight: cur + 1, ArrowLeft: cur - 1, Home: 0, End: times.length - 1 }[e.key];
+    if (next === undefined) return;
+    e.preventDefault();
+    show(Math.max(0, Math.min(times.length - 1, next)));
+  });
+  show(cur);
 }
 
 function chartEmptyText(n) {
@@ -1675,7 +1722,7 @@ function chartEmptyText(n) {
   return chartRange ? '最近 ' + chartRange + ' 天內沒有資料' : '尚無資料，記錄兩筆以上即可看到趨勢';
 }
 function buildChartCard(label, unit, records, valueKey, color, latestFormatter) {
-  const filtered = records.filter(r => r[valueKey] != null && inRange(r)).sort((a, b) => a.time - b.time).slice(-MAX_POINTS);
+  const filtered = records.filter(r => r[valueKey] != null && inChartRange(r)).sort((a, b) => a.time - b.time).slice(-MAX_POINTS);
   const card = document.createElement('div');
   card.className = 'chart-card';
 
@@ -1706,9 +1753,10 @@ function buildChartCard(label, unit, records, valueKey, color, latestFormatter) 
     return card;
   }
 
-  attachChart(card, filtered.map(r => r.time), [{ values: filtered.map(r => r[valueKey]), color }],
-    (v) => +dispVal(valueKey, v).toFixed(1), (i) => dispVal(valueKey, filtered[i][valueKey]) + ' ' + unit);
   const vals = filtered.map(r => dispVal(valueKey, r[valueKey]));
+  attachChart(card, filtered.map(r => r.time), [{ values: filtered.map(r => r[valueKey]), color }],
+    (v) => +dispVal(valueKey, v).toFixed(1), (i) => dispVal(valueKey, filtered[i][valueKey]) + ' ' + unit,
+    `${label}趨勢圖，共 ${filtered.length} 筆，最低 ${Math.min(...vals)}、最高 ${Math.max(...vals)} ${unit}，最新 ${vals[vals.length - 1]} ${unit}`);
   const foot = document.createElement('div');
   foot.className = 'chart-foot';
   foot.textContent = `${fmtDateShort(filtered[0].time)} → ${fmtDateShort(filtered[filtered.length - 1].time)} · 低 ${Math.min(...vals)} 高 ${Math.max(...vals)}`;
@@ -1718,7 +1766,7 @@ function buildChartCard(label, unit, records, valueKey, color, latestFormatter) 
 }
 
 function buildBpChartCard(records) {
-  const filtered = records.filter(r => r.sys != null && r.dia != null && inRange(r)).sort((a, b) => a.time - b.time).slice(-MAX_POINTS);
+  const filtered = records.filter(r => r.sys != null && r.dia != null && inChartRange(r)).sort((a, b) => a.time - b.time).slice(-MAX_POINTS);
   const card = document.createElement('div');
   card.className = 'chart-card';
 
@@ -1752,7 +1800,8 @@ function buildBpChartCard(records) {
   attachChart(card, filtered.map(r => r.time), [
     { values: filtered.map(r => r.sys), color: 'var(--c-sys)' },
     { values: filtered.map(r => r.dia), color: 'var(--c-dia)' },
-  ], (v) => Math.round(v), (i) => filtered[i].sys + '/' + filtered[i].dia + ' mmHg');
+  ], (v) => Math.round(v), (i) => filtered[i].sys + '/' + filtered[i].dia + ' mmHg',
+    `血壓趨勢圖，共 ${filtered.length} 筆，收縮壓 ${Math.min(...filtered.map(r => r.sys))}–${Math.max(...filtered.map(r => r.sys))}、舒張壓 ${Math.min(...filtered.map(r => r.dia))}–${Math.max(...filtered.map(r => r.dia))} mmHg`);
 
   const legend = document.createElement('div');
   legend.className = 'chart-legend';
@@ -1815,7 +1864,7 @@ function renderStatsSummary() {
   renderFastingStats();
   if (bioRecords.length === 0) return;
   // 與下方趨勢圖使用同一個時間範圍
-  const recs = bioRecords.filter(inRange);
+  const recs = bioRecords.filter(inChartRange);
   if (recs.length === 0) {
     const card = document.createElement('div');
     card.className = 'stats-card wide';
@@ -1943,9 +1992,11 @@ function renderFastingHistory() {
     actions.className = 'history-actions';
     const editBtn = document.createElement('button');
     editBtn.textContent = '編輯';
+    editBtn.setAttribute('aria-label', '編輯 ' + fmtDateShort(entry.startTime) + ' 開始的斷食紀錄');
     editBtn.addEventListener('click', () => editFastingEntry(entry));
     const delBtn = document.createElement('button');
     delBtn.textContent = '刪除';
+    delBtn.setAttribute('aria-label', '刪除 ' + fmtDateShort(entry.startTime) + ' 開始的斷食紀錄');
     delBtn.addEventListener('click', () => {
       fastingHistory = fastingHistory.filter(f => f.id !== entry.id);
       saveFastingHistory(); renderCharts();
@@ -2063,47 +2114,38 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pagehide', markSeen);
 
 /* --------------- 同意對話 & 隱私操作 --------------- */
-function showConsentModal() {
+async function showConsentModal() {
   if (document.getElementById('consentOverlay')) return;
-  const overlay = document.createElement('div');
-  overlay.id = 'consentOverlay';
-  overlay.className = 'modal-overlay';
-  overlay.innerHTML = `
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="consentTitle">
-      <h3 id="consentTitle">隱私與資料處理說明</h3>
-      <p>本應用在您的瀏覽器本機儲存斷食紀錄與生理數據，用於顯示統計與歷史。資料不會自動上傳到任何伺服器，除非您手動匯出並上傳。</p>
-      <p>注意：應用僅提供參考資訊，並非醫療診斷或治療建議。若需醫療意見請諮詢專業醫療人員。</p>
-      <p>處理敏感生理資料前，請閱讀並同意以下內容：您同意此應用以本機方式儲存與處理資料，並可隨時匯出或刪除本機資料。</p>
-      <div style="margin-top:8px; font-size:12px; color:var(--text-faint);">使用本應用即表示您已閱讀並同意上述內容。</div>
-      <div class="modal-actions">
-        <button class="modal-btn-secondary" id="consentDecline">不同意</button>
-        <button class="modal-btn-primary" id="consentAccept">同意並繼續</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-  document.getElementById('consentAccept').focus();
-  document.getElementById('consentAccept').addEventListener('click', () => {
+  const r = await openDialog({
+    overlayId: 'consentOverlay',
+    title: '隱私與資料處理說明',
+    message: '本應用在您的瀏覽器本機儲存斷食紀錄與生理數據，用於顯示統計與歷史。資料不會自動上傳到任何伺服器，除非您手動匯出並上傳。\n\n'
+      + '注意：應用僅提供參考資訊，並非醫療診斷或治療建議。若需醫療意見請諮詢專業醫療人員。\n\n'
+      + '處理敏感生理資料前，請閱讀並同意以下內容：您同意此應用以本機方式儲存與處理資料，並可隨時匯出或刪除本機資料。',
+    note: '使用本應用即表示您已閱讀並同意上述內容。',
+    buttons: [{ label: '不同意', value: false, kind: 'secondary' }, { label: '同意並繼續', value: true, kind: 'primary' }],
+    dismissValue: false,
+    backdropDismiss: false, // 避免誤觸背景就變成「不同意」
+  });
+  if (r.action === true) {
     consented = true;
     lsSet(CONSENT_KEY, '1');
-    overlay.remove();
     nosaveBanner.hidden = true;
-    saveState(); saveBio(); saveFastingHistory();
-  });
-  document.getElementById('consentDecline').addEventListener('click', async () => {
-    consented = false;
-    try { localStorage.removeItem(CONSENT_KEY); } catch (e) {}
-    overlay.remove();
-    nosaveBanner.hidden = false;
-    // 先前同意時存下的資料仍在本機，詢問是否一併刪除
-    if (hasStoredData() && await uiConfirm('本機仍保存著先前的斷食紀錄與生理數據，要一併刪除嗎？\n若選擇保留，之後的新增或修改都不會儲存。', { title: '刪除先前的資料？', ok: '刪除', cancel: '保留', danger: true })) {
-      removeStoredData();
-      bioRecords = [];
-      fastingHistory = [];
-      renderBioList();
-      renderCharts();
-      showToast('已刪除本機儲存的資料');
-    }
-  });
+    saveState(); saveBio(); saveFastingHistory(); markSeen();
+    return;
+  }
+  consented = false;
+  try { localStorage.removeItem(CONSENT_KEY); } catch (e) {}
+  nosaveBanner.hidden = false;
+  // 先前同意時存下的資料仍在本機，詢問是否一併刪除
+  if (hasStoredData() && await uiConfirm('本機仍保存著先前的斷食紀錄與生理數據，要一併刪除嗎？\n若選擇保留，之後的新增或修改都不會儲存。', { title: '刪除先前的資料？', ok: '刪除', cancel: '保留', danger: true })) {
+    removeStoredData();
+    bioRecords = [];
+    fastingHistory = [];
+    renderBioList();
+    renderCharts();
+    showToast('已刪除本機儲存的資料');
+  }
 }
 
 document.getElementById('privacyBtn').addEventListener('click', () => showConsentModal());

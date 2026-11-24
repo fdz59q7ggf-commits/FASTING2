@@ -15,18 +15,19 @@
 - 血糖、心跳、血壓異常時顯示警示（依目前選擇的血糖單位顯示門檻）
 - 隱私同意機制：未同意時資料不會儲存；拒絕同意時可選擇一併刪除先前已儲存的資料；可一鍵刪除所有本機資料（含設定與舊版資料）
 - 斷食進行中自動要求螢幕常亮（瀏覽器支援時）
-- 快捷鍵：1 / 2 / 3 切換頁籤
+- 鍵盤操作：1 / 2 / 3 切換頁籤，頁籤列也可用 ← → / Home / End；圖表聚焦後可用 ← → 逐筆查看數值；對話框支援 Esc / Enter
+- 螢幕閱讀器：頁籤、對話框、進度圓環與趨勢圖都有對應的角色與文字說明
 - 目標時數可選 16–336 小時或自訂（1–720 小時）、血糖 mg/dL ↔ mmol/L、體重 kg ↔ lb
 - 喝水 / 電解質定時提醒、長時間斷食後的復食提醒
 - 趨勢圖有座標軸，點選資料點可查看當次數值與時間；7 天 / 30 天 / 全部 的切換同時套用到數據統計卡與趨勢圖
 - 症狀記錄（頭暈、心悸、噁心等，可複選）與次數統計
-- 可安裝成 App（支援的瀏覽器）
+- 可安裝成 App（支援的瀏覽器），Android 使用 maskable 圖示，不會被裁切
 - 淺色 / 深色主題：預設即時跟隨系統設定，手動切換後會記住你的選擇
 
 ## 部署方式（GitHub Pages，免費）
 
 1. 到 https://github.com 建立一個新的 public repository
-2. 把這個資料夾內的檔案（index.html、manifest.json、icon.svg、sw.js、icon-180.png、icon-192.png、icon-512.png）上傳上去
+2. 把這個資料夾內的檔案（index.html、manifest.json、sw.js、icon.svg、icon-180.png、icon-192.png、icon-512.png、icon-maskable-512.png）上傳上去
 3. 進入 repo 的 **Settings → Pages**
 4. Source 選 `Deploy from a branch`，Branch 選 `main`、資料夾選 `/ (root)`，儲存
 5. 等 1-2 分鐘，會拿到網址 `https://你的帳號.github.io/repo名稱/`

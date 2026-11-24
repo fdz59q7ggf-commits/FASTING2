@@ -1,4 +1,4 @@
-const CACHE_NAME = 'seg-timer-cache-v3';
+const CACHE_NAME = 'seg-timer-cache-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -6,7 +6,8 @@ const ASSETS = [
   './icon.svg',
   './icon-180.png',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './icon-maskable-512.png'
 ];
 
 self.addEventListener('install', (event) => {

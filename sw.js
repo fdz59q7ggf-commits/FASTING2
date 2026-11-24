@@ -1,4 +1,4 @@
-const CACHE_NAME = 'seg-timer-cache-v2';
+const CACHE_NAME = 'seg-timer-cache-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -60,6 +60,19 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => cached);
       return cached || network;
+    })
+  );
+});
+
+// 點通知時切回已開啟的 App 視窗，沒有的話開新視窗
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if (c.url.startsWith(self.registration.scope) && 'focus' in c) return c.focus();
+      }
+      return self.clients.openWindow ? self.clients.openWindow('./') : undefined;
     })
   );
 });
